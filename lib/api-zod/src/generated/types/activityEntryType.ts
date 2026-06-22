@@ -17,4 +17,7 @@ export const ActivityEntryType = {
   snapshot_rolled_back: 'snapshot_rolled_back',
   agent_created: 'agent_created',
   agent_updated: 'agent_updated',
+  project_created: 'project_created',
+  file_written: 'file_written',
+  memory_updated: 'memory_updated',
 } as const;

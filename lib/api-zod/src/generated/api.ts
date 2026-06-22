@@ -17,6 +17,192 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary List all projects
+ */
+export const ListProjectsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['initialized', 'active', 'paused', 'completed']),
+  "stack": zod.string().nullish(),
+  "totalRuns": zod.number(),
+  "totalFiles": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
+
+
+/**
+ * @summary Create a new project
+ */
+export const CreateProjectBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string(),
+  "stack": zod.string().optional()
+})
+
+
+/**
+ * @summary Get project with full memory context
+ */
+export const GetProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const GetProjectResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['initialized', 'active', 'paused', 'completed']),
+  "stack": zod.string().nullish(),
+  "totalRuns": zod.number(),
+  "totalFiles": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "memory": zod.object({
+  "facts": zod.array(zod.object({
+  "key": zod.string(),
+  "value": zod.string(),
+  "source": zod.string(),
+  "createdAt": zod.string()
+})),
+  "summary": zod.string(),
+  "lastUpdated": zod.string()
+}),
+  "recentRuns": zod.array(zod.object({
+  "id": zod.string(),
+  "projectId": zod.string().nullable(),
+  "projectName": zod.string(),
+  "prompt": zod.string(),
+  "status": zod.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
+  "agentKeys": zod.array(zod.string()),
+  "parallelCount": zod.number(),
+  "snapshotId": zod.string().nullish(),
+  "filesWritten": zod.number().optional(),
+  "completedAt": zod.string().nullish(),
+  "createdAt": zod.string()
+}))
+})
+
+
+/**
+ * @summary Update project metadata
+ */
+export const UpdateProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const UpdateProjectBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().optional(),
+  "status": zod.enum(['initialized', 'active', 'paused', 'completed']).optional(),
+  "stack": zod.string().optional()
+})
+
+export const UpdateProjectResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['initialized', 'active', 'paused', 'completed']),
+  "stack": zod.string().nullish(),
+  "totalRuns": zod.number(),
+  "totalFiles": zod.number(),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete a project and all its data
+ */
+export const DeleteProjectParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+
+/**
+ * @summary Append facts to project memory context
+ */
+export const UpdateProjectMemoryParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const UpdateProjectMemoryBody = zod.object({
+  "facts": zod.array(zod.object({
+  "key": zod.string(),
+  "value": zod.string(),
+  "source": zod.string()
+})),
+  "summary": zod.string().optional()
+})
+
+export const UpdateProjectMemoryResponse = zod.object({
+  "facts": zod.array(zod.object({
+  "key": zod.string(),
+  "value": zod.string(),
+  "source": zod.string(),
+  "createdAt": zod.string()
+})),
+  "summary": zod.string(),
+  "lastUpdated": zod.string()
+})
+
+
+/**
+ * @summary List all files created/modified by agents for this project
+ */
+export const ListProjectFilesParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const ListProjectFilesResponseItem = zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "path": zod.string(),
+  "language": zod.string(),
+  "operation": zod.enum(['create', 'update', 'delete']),
+  "version": zod.number(),
+  "agentKey": zod.string(),
+  "runId": zod.string(),
+  "sizeBytes": zod.number(),
+  "createdAt": zod.string()
+})
+export const ListProjectFilesResponse = zod.array(ListProjectFilesResponseItem)
+
+
+/**
+ * @summary Get a project file with full version history
+ */
+export const GetProjectFileParams = zod.object({
+  "projectId": zod.coerce.string(),
+  "fileId": zod.coerce.string()
+})
+
+export const GetProjectFileResponse = zod.object({
+  "id": zod.string(),
+  "projectId": zod.string(),
+  "path": zod.string(),
+  "language": zod.string(),
+  "operation": zod.enum(['create', 'update', 'delete']),
+  "version": zod.number(),
+  "agentKey": zod.string(),
+  "runId": zod.string(),
+  "sizeBytes": zod.number(),
+  "content": zod.string(),
+  "history": zod.array(zod.object({
+  "version": zod.number(),
+  "content": zod.string(),
+  "agentKey": zod.string(),
+  "runId": zod.string(),
+  "operation": zod.enum(['create', 'update', 'delete']),
+  "createdAt": zod.string()
+})),
+  "createdAt": zod.string()
+})
+
+
+/**
  * @summary List all agent definitions
  */
 export const ListAgentsResponseItem = zod.object({
@@ -104,17 +290,20 @@ export const DeleteAgentParams = zod.object({
  */
 export const ListRunsQueryParams = zod.object({
   "status": zod.enum(['queued', 'running', 'completed', 'failed', 'cancelled']).optional(),
+  "projectId": zod.coerce.string().optional(),
   "limit": zod.coerce.number().optional()
 })
 
 export const ListRunsResponseItem = zod.object({
   "id": zod.string(),
+  "projectId": zod.string().nullable(),
   "projectName": zod.string(),
   "prompt": zod.string(),
   "status": zod.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
   "agentKeys": zod.array(zod.string()),
   "parallelCount": zod.number(),
   "snapshotId": zod.string().nullish(),
+  "filesWritten": zod.number().optional(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -125,6 +314,7 @@ export const ListRunsResponse = zod.array(ListRunsResponseItem)
  * @summary Start a new pipeline run
  */
 export const CreateRunBody = zod.object({
+  "projectId": zod.string().optional(),
   "projectName": zod.string(),
   "prompt": zod.string(),
   "agentKeys": zod.array(zod.string()),
@@ -142,24 +332,28 @@ export const GetRunParams = zod.object({
 
 export const GetRunResponse = zod.object({
   "id": zod.string(),
+  "projectId": zod.string().nullable(),
   "projectName": zod.string(),
   "prompt": zod.string(),
   "status": zod.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
   "agentKeys": zod.array(zod.string()),
   "parallelCount": zod.number(),
   "snapshotId": zod.string().nullish(),
+  "filesWritten": zod.number().optional(),
   "completedAt": zod.string().nullish(),
-  "createdAt": zod.string(),
+  "createdAt": zod.string()
+}).and(zod.object({
   "logs": zod.array(zod.object({
   "id": zod.string(),
   "runId": zod.string(),
   "agentKey": zod.string(),
-  "level": zod.enum(['info', 'warn', 'error', 'think', 'output']),
+  "level": zod.enum(['info', 'warn', 'error', 'think', 'output', 'file']),
   "message": zod.string(),
   "thinkTrace": zod.string().nullish(),
+  "filePath": zod.string().nullish(),
   "createdAt": zod.string()
 }))
-})
+}))
 
 
 /**
@@ -171,12 +365,14 @@ export const CancelRunParams = zod.object({
 
 export const CancelRunResponse = zod.object({
   "id": zod.string(),
+  "projectId": zod.string().nullable(),
   "projectName": zod.string(),
   "prompt": zod.string(),
   "status": zod.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
   "agentKeys": zod.array(zod.string()),
   "parallelCount": zod.number(),
   "snapshotId": zod.string().nullish(),
+  "filesWritten": zod.number().optional(),
   "completedAt": zod.string().nullish(),
   "createdAt": zod.string()
 })
@@ -285,21 +481,23 @@ export const GetWorkspaceFileResponse = zod.object({
 
 
 /**
- * @summary Get system stats (agent counts, run totals, throughput)
+ * @summary Get system stats
  */
 export const GetStatsResponse = zod.object({
   "totalAgents": zod.number(),
+  "totalProjects": zod.number(),
   "activeRuns": zod.number(),
   "completedRuns": zod.number(),
   "failedRuns": zod.number(),
   "totalSnapshots": zod.number(),
   "totalLogs": zod.number(),
+  "totalFiles": zod.number(),
   "recentThroughput": zod.number()
 })
 
 
 /**
- * @summary Recent activity feed across all runs and agents
+ * @summary Recent activity feed
  */
 export const ListActivityQueryParams = zod.object({
   "limit": zod.coerce.number().optional()
@@ -307,12 +505,53 @@ export const ListActivityQueryParams = zod.object({
 
 export const ListActivityResponseItem = zod.object({
   "id": zod.string(),
-  "type": zod.enum(['run_started', 'run_completed', 'run_failed', 'snapshot_created', 'snapshot_rolled_back', 'agent_created', 'agent_updated']),
+  "type": zod.enum(['run_started', 'run_completed', 'run_failed', 'snapshot_created', 'snapshot_rolled_back', 'agent_created', 'agent_updated', 'project_created', 'file_written', 'memory_updated']),
   "message": zod.string(),
   "entityId": zod.string(),
-  "entityType": zod.enum(['run', 'snapshot', 'agent']),
+  "entityType": zod.enum(['run', 'snapshot', 'agent', 'project', 'file']),
   "createdAt": zod.string()
 })
 export const ListActivityResponse = zod.array(ListActivityResponseItem)
+
+
+/**
+ * @summary Execute a CLI command against a project (REPL)
+ */
+export const ExecuteCliCommandBody = zod.object({
+  "command": zod.string(),
+  "projectId": zod.string().optional(),
+  "projectName": zod.string().optional()
+})
+
+export const ExecuteCliCommandResponse = zod.object({
+  "id": zod.string(),
+  "command": zod.string(),
+  "output": zod.string(),
+  "exitCode": zod.number(),
+  "durationMs": zod.number(),
+  "projectId": zod.string().nullish(),
+  "runId": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Get command history for a project
+ */
+export const GetCliHistoryQueryParams = zod.object({
+  "projectId": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().optional()
+})
+
+export const GetCliHistoryResponseItem = zod.object({
+  "id": zod.string(),
+  "command": zod.string(),
+  "output": zod.string(),
+  "exitCode": zod.number(),
+  "durationMs": zod.number(),
+  "projectId": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const GetCliHistoryResponse = zod.array(GetCliHistoryResponseItem)
 
 

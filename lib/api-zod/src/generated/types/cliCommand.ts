@@ -5,9 +5,9 @@
  * Swarm Agent Orchestration API
  * OpenAPI spec version: 0.1.0
  */
-import type { Run } from './run';
-import type { RunLog } from './runLog';
 
-export type RunDetail = Run & {
-  logs: RunLog[];
-};
+export interface CliCommand {
+  command: string;
+  projectId?: string;
+  projectName?: string;
+}

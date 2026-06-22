@@ -7,6 +7,7 @@
  */
 
 export interface RunInput {
+  projectId?: string;
   projectName: string;
   prompt: string;
   agentKeys: string[];

@@ -5,17 +5,16 @@
  * Swarm Agent Orchestration API
  * OpenAPI spec version: 0.1.0
  */
-import type { RunLogLevel } from './runLogLevel';
 
-export interface RunLog {
+export interface CliResult {
   id: string;
-  runId: string;
-  agentKey: string;
-  level: RunLogLevel;
-  message: string;
+  command: string;
+  output: string;
+  exitCode: number;
+  durationMs: number;
   /** @nullable */
-  thinkTrace?: string | null;
+  projectId?: string | null;
   /** @nullable */
-  filePath?: string | null;
+  runId?: string | null;
   createdAt: string;
 }

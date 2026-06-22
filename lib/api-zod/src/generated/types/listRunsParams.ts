@@ -9,5 +9,6 @@ import type { ListRunsStatus } from './listRunsStatus';
 
 export type ListRunsParams = {
 status?: ListRunsStatus;
+projectId?: string;
 limit?: number;
 };

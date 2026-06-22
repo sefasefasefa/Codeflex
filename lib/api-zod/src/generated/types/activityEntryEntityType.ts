@@ -13,4 +13,6 @@ export const ActivityEntryEntityType = {
   run: 'run',
   snapshot: 'snapshot',
   agent: 'agent',
+  project: 'project',
+  file: 'file',
 } as const;

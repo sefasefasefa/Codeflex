@@ -9,6 +9,193 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface ProjectMemoryFact {
+  key: string;
+  value: string;
+  source: string;
+  createdAt: string;
+}
+
+export interface ProjectMemory {
+  facts: ProjectMemoryFact[];
+  summary: string;
+  lastUpdated: string;
+}
+
+export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
+
+
+export const ProjectStatus = {
+  initialized: 'initialized',
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  /** @nullable */
+  stack?: string | null;
+  totalRuns: number;
+  totalFiles: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProjectDetailStatus = typeof ProjectDetailStatus[keyof typeof ProjectDetailStatus];
+
+
+export const ProjectDetailStatus = {
+  initialized: 'initialized',
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export type RunStatus = typeof RunStatus[keyof typeof RunStatus];
+
+
+export const RunStatus = {
+  queued: 'queued',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+  cancelled: 'cancelled',
+} as const;
+
+export interface Run {
+  id: string;
+  /** @nullable */
+  projectId: string | null;
+  projectName: string;
+  prompt: string;
+  status: RunStatus;
+  agentKeys: string[];
+  parallelCount: number;
+  /** @nullable */
+  snapshotId?: string | null;
+  filesWritten?: number;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export interface ProjectDetail {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectDetailStatus;
+  /** @nullable */
+  stack?: string | null;
+  totalRuns: number;
+  totalFiles: number;
+  createdAt: string;
+  updatedAt: string;
+  memory: ProjectMemory;
+  recentRuns: Run[];
+}
+
+export interface ProjectInput {
+  name: string;
+  description: string;
+  stack?: string;
+}
+
+export type ProjectUpdateStatus = typeof ProjectUpdateStatus[keyof typeof ProjectUpdateStatus];
+
+
+export const ProjectUpdateStatus = {
+  initialized: 'initialized',
+  active: 'active',
+  paused: 'paused',
+  completed: 'completed',
+} as const;
+
+export interface ProjectUpdate {
+  name?: string;
+  description?: string;
+  status?: ProjectUpdateStatus;
+  stack?: string;
+}
+
+export type MemoryPatchFactsItem = {
+  key: string;
+  value: string;
+  source: string;
+};
+
+export interface MemoryPatch {
+  facts: MemoryPatchFactsItem[];
+  summary?: string;
+}
+
+export type ProjectFileOperation = typeof ProjectFileOperation[keyof typeof ProjectFileOperation];
+
+
+export const ProjectFileOperation = {
+  create: 'create',
+  update: 'update',
+  delete: 'delete',
+} as const;
+
+export interface ProjectFile {
+  id: string;
+  projectId: string;
+  path: string;
+  language: string;
+  operation: ProjectFileOperation;
+  version: number;
+  agentKey: string;
+  runId: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export type ProjectFileVersionOperation = typeof ProjectFileVersionOperation[keyof typeof ProjectFileVersionOperation];
+
+
+export const ProjectFileVersionOperation = {
+  create: 'create',
+  update: 'update',
+  delete: 'delete',
+} as const;
+
+export interface ProjectFileVersion {
+  version: number;
+  content: string;
+  agentKey: string;
+  runId: string;
+  operation: ProjectFileVersionOperation;
+  createdAt: string;
+}
+
+export type ProjectFileDetailOperation = typeof ProjectFileDetailOperation[keyof typeof ProjectFileDetailOperation];
+
+
+export const ProjectFileDetailOperation = {
+  create: 'create',
+  update: 'update',
+  delete: 'delete',
+} as const;
+
+export interface ProjectFileDetail {
+  id: string;
+  projectId: string;
+  path: string;
+  language: string;
+  operation: ProjectFileDetailOperation;
+  version: number;
+  agentKey: string;
+  runId: string;
+  sizeBytes: number;
+  content: string;
+  history: ProjectFileVersion[];
+  createdAt: string;
+}
+
 export interface Agent {
   id: string;
   key: string;
@@ -37,42 +224,6 @@ export interface AgentUpdate {
   maxRetries?: number;
 }
 
-export type RunStatus = typeof RunStatus[keyof typeof RunStatus];
-
-
-export const RunStatus = {
-  queued: 'queued',
-  running: 'running',
-  completed: 'completed',
-  failed: 'failed',
-  cancelled: 'cancelled',
-} as const;
-
-export interface Run {
-  id: string;
-  projectName: string;
-  prompt: string;
-  status: RunStatus;
-  agentKeys: string[];
-  parallelCount: number;
-  /** @nullable */
-  snapshotId?: string | null;
-  /** @nullable */
-  completedAt?: string | null;
-  createdAt: string;
-}
-
-export type RunDetailStatus = typeof RunDetailStatus[keyof typeof RunDetailStatus];
-
-
-export const RunDetailStatus = {
-  queued: 'queued',
-  running: 'running',
-  completed: 'completed',
-  failed: 'failed',
-  cancelled: 'cancelled',
-} as const;
-
 export type RunLogLevel = typeof RunLogLevel[keyof typeof RunLogLevel];
 
 
@@ -82,6 +233,7 @@ export const RunLogLevel = {
   error: 'error',
   think: 'think',
   output: 'output',
+  file: 'file',
 } as const;
 
 export interface RunLog {
@@ -92,25 +244,17 @@ export interface RunLog {
   message: string;
   /** @nullable */
   thinkTrace?: string | null;
+  /** @nullable */
+  filePath?: string | null;
   createdAt: string;
 }
 
-export interface RunDetail {
-  id: string;
-  projectName: string;
-  prompt: string;
-  status: RunDetailStatus;
-  agentKeys: string[];
-  parallelCount: number;
-  /** @nullable */
-  snapshotId?: string | null;
-  /** @nullable */
-  completedAt?: string | null;
-  createdAt: string;
+export type RunDetail = Run & {
   logs: RunLog[];
-}
+};
 
 export interface RunInput {
+  projectId?: string;
   projectName: string;
   prompt: string;
   agentKeys: string[];
@@ -162,11 +306,13 @@ export interface WorkspaceFileContent {
 
 export interface SystemStats {
   totalAgents: number;
+  totalProjects: number;
   activeRuns: number;
   completedRuns: number;
   failedRuns: number;
   totalSnapshots: number;
   totalLogs: number;
+  totalFiles: number;
   recentThroughput: number;
 }
 
@@ -181,6 +327,9 @@ export const ActivityEntryType = {
   snapshot_rolled_back: 'snapshot_rolled_back',
   agent_created: 'agent_created',
   agent_updated: 'agent_updated',
+  project_created: 'project_created',
+  file_written: 'file_written',
+  memory_updated: 'memory_updated',
 } as const;
 
 export type ActivityEntryEntityType = typeof ActivityEntryEntityType[keyof typeof ActivityEntryEntityType];
@@ -190,6 +339,8 @@ export const ActivityEntryEntityType = {
   run: 'run',
   snapshot: 'snapshot',
   agent: 'agent',
+  project: 'project',
+  file: 'file',
 } as const;
 
 export interface ActivityEntry {
@@ -201,8 +352,39 @@ export interface ActivityEntry {
   createdAt: string;
 }
 
+export interface CliCommand {
+  command: string;
+  projectId?: string;
+  projectName?: string;
+}
+
+export interface CliResult {
+  id: string;
+  command: string;
+  output: string;
+  exitCode: number;
+  durationMs: number;
+  /** @nullable */
+  projectId?: string | null;
+  /** @nullable */
+  runId?: string | null;
+  createdAt: string;
+}
+
+export interface CliHistoryEntry {
+  id: string;
+  command: string;
+  output: string;
+  exitCode: number;
+  durationMs: number;
+  /** @nullable */
+  projectId?: string | null;
+  createdAt: string;
+}
+
 export type ListRunsParams = {
 status?: ListRunsStatus;
+projectId?: string;
 limit?: number;
 };
 
@@ -226,6 +408,11 @@ path: string;
 };
 
 export type ListActivityParams = {
+limit?: number;
+};
+
+export type GetCliHistoryParams = {
+projectId?: string;
 limit?: number;
 };
 

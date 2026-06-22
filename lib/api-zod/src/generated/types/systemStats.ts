@@ -8,10 +8,12 @@
 
 export interface SystemStats {
   totalAgents: number;
+  totalProjects: number;
   activeRuns: number;
   completedRuns: number;
   failedRuns: number;
   totalSnapshots: number;
   totalLogs: number;
+  totalFiles: number;
   recentThroughput: number;
 }

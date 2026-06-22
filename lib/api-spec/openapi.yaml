@@ -8,17 +8,13 @@ servers:
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: projects
   - name: agents
-    description: Agent definitions and configuration
   - name: runs
-    description: Pipeline run management
   - name: snapshots
-    description: Snapshot and rollback management
   - name: workspace
-    description: Workspace file management
   - name: stats
-    description: System statistics and activity
+  - name: cli
 paths:
   /healthz:
     get:
@@ -32,6 +28,167 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      responses:
+        "200":
+          description: Project list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{projectId}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project with full memory context
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectDetail"
+        "404":
+          description: Not found
+    put:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project metadata
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project and all its data
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /projects/{projectId}/memory:
+    patch:
+      operationId: updateProjectMemory
+      tags: [projects]
+      summary: Append facts to project memory context
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryPatch"
+      responses:
+        "200":
+          description: Updated memory
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMemory"
+
+  /projects/{projectId}/files:
+    get:
+      operationId: listProjectFiles
+      tags: [projects]
+      summary: List all files created/modified by agents for this project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectFile"
+
+  /projects/{projectId}/files/{fileId}:
+    get:
+      operationId: getProjectFile
+      tags: [projects]
+      summary: Get a project file with full version history
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File with history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectFileDetail"
+        "404":
+          description: Not found
 
   /agents:
     get:
@@ -134,6 +291,11 @@ paths:
           schema:
             type: string
             enum: [queued, running, completed, failed, cancelled]
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
         - name: limit
           in: query
           required: false
@@ -331,7 +493,7 @@ paths:
     get:
       operationId: getStats
       tags: [stats]
-      summary: Get system stats (agent counts, run totals, throughput)
+      summary: Get system stats
       responses:
         "200":
           description: Stats
@@ -344,7 +506,7 @@ paths:
     get:
       operationId: listActivity
       tags: [stats]
-      summary: Recent activity feed across all runs and agents
+      summary: Recent activity feed
       parameters:
         - name: limit
           in: query
@@ -361,6 +523,51 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityEntry"
 
+  /cli:
+    post:
+      operationId: executeCliCommand
+      tags: [cli]
+      summary: Execute a CLI command against a project (REPL)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CliCommand"
+      responses:
+        "200":
+          description: Command result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CliResult"
+
+  /cli/history:
+    get:
+      operationId: getCliHistory
+      tags: [cli]
+      summary: Get command history for a project
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Command history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CliHistoryEntry"
+
 components:
   schemas:
     HealthStatus:
@@ -368,6 +575,205 @@ components:
       required: [status]
       properties:
         status:
+          type: string
+
+    ProjectMemoryFact:
+      type: object
+      required: [key, value, source, createdAt]
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+        source:
+          type: string
+        createdAt:
+          type: string
+
+    ProjectMemory:
+      type: object
+      required: [facts, summary, lastUpdated]
+      properties:
+        facts:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectMemoryFact"
+        summary:
+          type: string
+        lastUpdated:
+          type: string
+
+    Project:
+      type: object
+      required: [id, name, description, status, totalRuns, totalFiles, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [initialized, active, paused, completed]
+        stack:
+          type: ["string", "null"]
+        totalRuns:
+          type: integer
+        totalFiles:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ProjectDetail:
+      type: object
+      required: [id, name, description, status, totalRuns, totalFiles, createdAt, updatedAt, memory, recentRuns]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [initialized, active, paused, completed]
+        stack:
+          type: ["string", "null"]
+        totalRuns:
+          type: integer
+        totalFiles:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        memory:
+          $ref: "#/components/schemas/ProjectMemory"
+        recentRuns:
+          type: array
+          items:
+            $ref: "#/components/schemas/Run"
+
+    ProjectInput:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        stack:
+          type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [initialized, active, paused, completed]
+        stack:
+          type: string
+
+    MemoryPatch:
+      type: object
+      required: [facts]
+      properties:
+        facts:
+          type: array
+          items:
+            type: object
+            required: [key, value, source]
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+              source:
+                type: string
+        summary:
+          type: string
+
+    ProjectFile:
+      type: object
+      required: [id, projectId, path, language, operation, version, agentKey, runId, sizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        path:
+          type: string
+        language:
+          type: string
+        operation:
+          type: string
+          enum: [create, update, delete]
+        version:
+          type: integer
+        agentKey:
+          type: string
+        runId:
+          type: string
+        sizeBytes:
+          type: integer
+        createdAt:
+          type: string
+
+    ProjectFileVersion:
+      type: object
+      required: [version, content, agentKey, runId, operation, createdAt]
+      properties:
+        version:
+          type: integer
+        content:
+          type: string
+        agentKey:
+          type: string
+        runId:
+          type: string
+        operation:
+          type: string
+          enum: [create, update, delete]
+        createdAt:
+          type: string
+
+    ProjectFileDetail:
+      type: object
+      required: [id, projectId, path, language, operation, version, agentKey, runId, sizeBytes, content, history, createdAt]
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        path:
+          type: string
+        language:
+          type: string
+        operation:
+          type: string
+          enum: [create, update, delete]
+        version:
+          type: integer
+        agentKey:
+          type: string
+        runId:
+          type: string
+        sizeBytes:
+          type: integer
+        content:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProjectFileVersion"
+        createdAt:
           type: string
 
     Agent:
@@ -424,10 +830,12 @@ components:
 
     Run:
       type: object
-      required: [id, projectName, prompt, status, agentKeys, parallelCount, createdAt]
+      required: [id, projectId, projectName, prompt, status, agentKeys, parallelCount, createdAt]
       properties:
         id:
           type: string
+        projectId:
+          type: ["string", "null"]
         projectName:
           type: string
         prompt:
@@ -443,45 +851,30 @@ components:
           type: integer
         snapshotId:
           type: ["string", "null"]
+        filesWritten:
+          type: integer
         completedAt:
           type: ["string", "null"]
         createdAt:
           type: string
 
     RunDetail:
-      type: object
-      required: [id, projectName, prompt, status, agentKeys, parallelCount, createdAt, logs]
-      properties:
-        id:
-          type: string
-        projectName:
-          type: string
-        prompt:
-          type: string
-        status:
-          type: string
-          enum: [queued, running, completed, failed, cancelled]
-        agentKeys:
-          type: array
-          items:
-            type: string
-        parallelCount:
-          type: integer
-        snapshotId:
-          type: ["string", "null"]
-        completedAt:
-          type: ["string", "null"]
-        createdAt:
-          type: string
-        logs:
-          type: array
-          items:
-            $ref: "#/components/schemas/RunLog"
+      allOf:
+        - $ref: "#/components/schemas/Run"
+        - type: object
+          required: [logs]
+          properties:
+            logs:
+              type: array
+              items:
+                $ref: "#/components/schemas/RunLog"
 
     RunInput:
       type: object
       required: [projectName, prompt, agentKeys]
       properties:
+        projectId:
+          type: string
         projectName:
           type: string
         prompt:
@@ -507,10 +900,12 @@ components:
           type: string
         level:
           type: string
-          enum: [info, warn, error, think, output]
+          enum: [info, warn, error, think, output, file]
         message:
           type: string
         thinkTrace:
+          type: ["string", "null"]
+        filePath:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -576,9 +971,11 @@ components:
 
     SystemStats:
       type: object
-      required: [totalAgents, activeRuns, completedRuns, failedRuns, totalSnapshots, totalLogs, recentThroughput]
+      required: [totalAgents, totalProjects, activeRuns, completedRuns, failedRuns, totalSnapshots, totalLogs, totalFiles, recentThroughput]
       properties:
         totalAgents:
+          type: integer
+        totalProjects:
           type: integer
         activeRuns:
           type: integer
@@ -589,6 +986,8 @@ components:
         totalSnapshots:
           type: integer
         totalLogs:
+          type: integer
+        totalFiles:
           type: integer
         recentThroughput:
           type: number
@@ -601,13 +1000,64 @@ components:
           type: string
         type:
           type: string
-          enum: [run_started, run_completed, run_failed, snapshot_created, snapshot_rolled_back, agent_created, agent_updated]
+          enum: [run_started, run_completed, run_failed, snapshot_created, snapshot_rolled_back, agent_created, agent_updated, project_created, file_written, memory_updated]
         message:
           type: string
         entityId:
           type: string
         entityType:
           type: string
-          enum: [run, snapshot, agent]
+          enum: [run, snapshot, agent, project, file]
+        createdAt:
+          type: string
+
+    CliCommand:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: string
+        projectId:
+          type: string
+        projectName:
+          type: string
+
+    CliResult:
+      type: object
+      required: [id, command, output, exitCode, durationMs, createdAt]
+      properties:
+        id:
+          type: string
+        command:
+          type: string
+        output:
+          type: string
+        exitCode:
+          type: integer
+        durationMs:
+          type: integer
+        projectId:
+          type: ["string", "null"]
+        runId:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    CliHistoryEntry:
+      type: object
+      required: [id, command, output, exitCode, durationMs, createdAt]
+      properties:
+        id:
+          type: string
+        command:
+          type: string
+        output:
+          type: string
+        exitCode:
+          type: integer
+        durationMs:
+          type: integer
+        projectId:
+          type: ["string", "null"]
         createdAt:
           type: string

@@ -15,4 +15,5 @@ export const RunLogLevel = {
   error: 'error',
   think: 'think',
   output: 'output',
+  file: 'file',
 } as const;

@@ -9,6 +9,8 @@ import type { RunStatus } from './runStatus';
 
 export interface Run {
   id: string;
+  /** @nullable */
+  projectId: string | null;
   projectName: string;
   prompt: string;
   status: RunStatus;
@@ -16,6 +18,7 @@ export interface Run {
   parallelCount: number;
   /** @nullable */
   snapshotId?: string | null;
+  filesWritten?: number;
   /** @nullable */
   completedAt?: string | null;
   createdAt: string;
