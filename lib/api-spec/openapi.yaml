@@ -1,22 +1,30 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Swarm Agent Orchestration API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: agents
+    description: Agent definitions and configuration
+  - name: runs
+    description: Pipeline run management
+  - name: snapshots
+    description: Snapshot and rollback management
+  - name: workspace
+    description: Workspace file management
+  - name: stats
+    description: System statistics and activity
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +32,582 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /agents:
+    get:
+      operationId: listAgents
+      tags: [agents]
+      summary: List all agent definitions
+      responses:
+        "200":
+          description: Agent list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agent"
+    post:
+      operationId: createAgent
+      tags: [agents]
+      summary: Create or register a new agent definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+
+  /agents/{agentId}:
+    get:
+      operationId: getAgent
+      tags: [agents]
+      summary: Get agent details
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+        "404":
+          description: Not found
+    put:
+      operationId: updateAgent
+      tags: [agents]
+      summary: Update agent configuration
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agent"
+    delete:
+      operationId: deleteAgent
+      tags: [agents]
+      summary: Delete an agent definition
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /runs:
+    get:
+      operationId: listRuns
+      tags: [runs]
+      summary: List all pipeline runs
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [queued, running, completed, failed, cancelled]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Run list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Run"
+    post:
+      operationId: createRun
+      tags: [runs]
+      summary: Start a new pipeline run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Run"
+
+  /runs/{runId}:
+    get:
+      operationId: getRun
+      tags: [runs]
+      summary: Get run details with logs
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Run with logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunDetail"
+        "404":
+          description: Not found
+    delete:
+      operationId: cancelRun
+      tags: [runs]
+      summary: Cancel a running pipeline
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Run"
+
+  /snapshots:
+    get:
+      operationId: listSnapshots
+      tags: [snapshots]
+      summary: List all snapshots
+      responses:
+        "200":
+          description: Snapshot list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Snapshot"
+    post:
+      operationId: createSnapshot
+      tags: [snapshots]
+      summary: Create a manual snapshot of the workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SnapshotInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Snapshot"
+
+  /snapshots/{snapshotId}:
+    get:
+      operationId: getSnapshot
+      tags: [snapshots]
+      summary: Get snapshot details
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Snapshot"
+    delete:
+      operationId: deleteSnapshot
+      tags: [snapshots]
+      summary: Delete a snapshot
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /snapshots/{snapshotId}/rollback:
+    post:
+      operationId: rollbackSnapshot
+      tags: [snapshots]
+      summary: Rollback workspace to a snapshot
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Rolled back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Snapshot"
+
+  /workspace:
+    get:
+      operationId: listWorkspaceFiles
+      tags: [workspace]
+      summary: List workspace project files
+      parameters:
+        - name: project
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkspaceFile"
+
+  /workspace/file:
+    get:
+      operationId: getWorkspaceFile
+      tags: [workspace]
+      summary: Get file content
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkspaceFileContent"
+
+  /stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get system stats (agent counts, run totals, throughput)
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemStats"
+
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [stats]
+      summary: Recent activity feed across all runs and agents
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEntry"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    Agent:
+      type: object
+      required: [id, key, role, modelName, temperature, description, createdAt]
+      properties:
+        id:
+          type: string
+        key:
+          type: string
+        role:
+          type: string
+        modelName:
+          type: string
+        temperature:
+          type: number
+        description:
+          type: string
+        maxRetries:
+          type: integer
+        createdAt:
+          type: string
+
+    AgentInput:
+      type: object
+      required: [key, role, modelName, temperature, description]
+      properties:
+        key:
+          type: string
+        role:
+          type: string
+        modelName:
+          type: string
+        temperature:
+          type: number
+        description:
+          type: string
+        maxRetries:
+          type: integer
+
+    AgentUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+        modelName:
+          type: string
+        temperature:
+          type: number
+        description:
+          type: string
+        maxRetries:
+          type: integer
+
+    Run:
+      type: object
+      required: [id, projectName, prompt, status, agentKeys, parallelCount, createdAt]
+      properties:
+        id:
+          type: string
+        projectName:
+          type: string
+        prompt:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        agentKeys:
+          type: array
+          items:
+            type: string
+        parallelCount:
+          type: integer
+        snapshotId:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    RunDetail:
+      type: object
+      required: [id, projectName, prompt, status, agentKeys, parallelCount, createdAt, logs]
+      properties:
+        id:
+          type: string
+        projectName:
+          type: string
+        prompt:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, completed, failed, cancelled]
+        agentKeys:
+          type: array
+          items:
+            type: string
+        parallelCount:
+          type: integer
+        snapshotId:
+          type: ["string", "null"]
+        completedAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RunLog"
+
+    RunInput:
+      type: object
+      required: [projectName, prompt, agentKeys]
+      properties:
+        projectName:
+          type: string
+        prompt:
+          type: string
+        agentKeys:
+          type: array
+          items:
+            type: string
+        parallelCount:
+          type: integer
+        ollamaUrl:
+          type: string
+
+    RunLog:
+      type: object
+      required: [id, runId, agentKey, level, message, createdAt]
+      properties:
+        id:
+          type: string
+        runId:
+          type: string
+        agentKey:
+          type: string
+        level:
+          type: string
+          enum: [info, warn, error, think, output]
+        message:
+          type: string
+        thinkTrace:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    Snapshot:
+      type: object
+      required: [id, projectName, label, checkpointId, sizeBytes, createdAt]
+      properties:
+        id:
+          type: string
+        projectName:
+          type: string
+        label:
+          type: string
+        checkpointId:
+          type: string
+        sizeBytes:
+          type: integer
+        runId:
+          type: ["string", "null"]
+        agentKey:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    SnapshotInput:
+      type: object
+      required: [projectName, label]
+      properties:
+        projectName:
+          type: string
+        label:
+          type: string
+
+    WorkspaceFile:
+      type: object
+      required: [path, name, type]
+      properties:
+        path:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [file, directory]
+        size:
+          type: ["integer", "null"]
+        children:
+          type: ["array", "null"]
+          items:
+            $ref: "#/components/schemas/WorkspaceFile"
+
+    WorkspaceFileContent:
+      type: object
+      required: [path, content, lines]
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        lines:
+          type: integer
+
+    SystemStats:
+      type: object
+      required: [totalAgents, activeRuns, completedRuns, failedRuns, totalSnapshots, totalLogs, recentThroughput]
+      properties:
+        totalAgents:
+          type: integer
+        activeRuns:
+          type: integer
+        completedRuns:
+          type: integer
+        failedRuns:
+          type: integer
+        totalSnapshots:
+          type: integer
+        totalLogs:
+          type: integer
+        recentThroughput:
+          type: number
+
+    ActivityEntry:
+      type: object
+      required: [id, type, message, entityId, entityType, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [run_started, run_completed, run_failed, snapshot_created, snapshot_rolled_back, agent_created, agent_updated]
+        message:
+          type: string
+        entityId:
+          type: string
+        entityType:
+          type: string
+          enum: [run, snapshot, agent]
+        createdAt:
+          type: string
