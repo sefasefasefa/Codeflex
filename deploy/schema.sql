@@ -149,6 +149,23 @@ CREATE INDEX activity_created_idx ON activity(created_at DESC);
 CREATE INDEX activity_type_idx    ON activity(type);
 
 -- ============================================================
+-- conversations
+-- AI sohbet geçmişi — mesajlar JSONB dizisinde, proje bağlantılı
+-- ============================================================
+CREATE TABLE conversations (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT REFERENCES projects(id) ON DELETE SET NULL,
+    title       TEXT NOT NULL DEFAULT 'Yeni Sohbet',
+    messages    JSONB NOT NULL DEFAULT '[]',
+    model       TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX conv_project_idx ON conversations(project_id);
+CREATE INDEX conv_updated_idx ON conversations(updated_at DESC);
+
+-- ============================================================
 -- model_configs
 -- Global model yapılandırması + ajan bazında override + harici kaynaklar
 -- ============================================================

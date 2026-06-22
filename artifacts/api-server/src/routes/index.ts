@@ -13,6 +13,7 @@ import statsRouter from "./stats.js";
 import projectsRouter from "./projects.js";
 import cliRouter from "./cli.js";
 import modelsRouter from "./models.js";
+import chatRouter from "./chat.js";
 
 const router: IRouter = Router();
 
@@ -99,6 +100,7 @@ router.use("/snapshots", snapshotsRouter);
 router.use("/workspace", workspaceRouter);
 router.use("/cli", cliRouter);
 router.use("/models", modelsRouter);
+router.use("/chat", chatRouter);
 router.use(statsRouter);
 
 export default router;

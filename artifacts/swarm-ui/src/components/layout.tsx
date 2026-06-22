@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Activity, Cpu, PlayCircle, HardDrive, FolderOpen,
-  Layers, Terminal, SquareTerminal, BrainCircuit,
+  Layers, Terminal, SquareTerminal, BrainCircuit, MessageSquare,
 } from "lucide-react";
 import { useGetStats, useListRuns } from "@workspace/api-client-react";
 
@@ -21,6 +21,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Projects", href: "/projects", icon: Layers, badge: stats?.totalProjects },
   ];
   const pipelineNav = [
+    { label: "Chat", href: "/chat", icon: MessageSquare },
     { label: "Runs", href: "/runs", icon: PlayCircle, badge: activeRuns || undefined },
     { label: "Terminal", href: "/terminal", icon: SquareTerminal },
   ];

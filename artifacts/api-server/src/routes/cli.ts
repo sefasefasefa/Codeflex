@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { cliHistoryTable, projectsTable, runsTable, agentsTable, projectFilesTable } from "@workspace/db";
+import { cliHistoryTable, projectsTable, runsTable, agentsTable, projectFilesTable, conversationsTable } from "@workspace/db";
+import type { ChatMessage } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
+import { chat as llmChat } from "../lib/llm.js";
 
 const router = Router();
 
@@ -157,6 +159,85 @@ async function handleCommand(command: string, ctx: CmdContext): Promise<{ output
 
   if (cmd === "clear") {
     return { output: "\x1bc", exitCode: 0 };
+  }
+
+  // AI chat command
+  if (cmd === "chat") {
+    const sub = args[0]?.toLowerCase();
+
+    if (sub === "new") {
+      const id = generateId("conv");
+      await db.insert(conversationsTable).values({
+        id, title: "CLI Sohbeti", projectId: ctx.projectId ?? undefined, messages: [],
+      });
+      return { output: `Yeni sohbet oluşturuldu: ${id}\nKullanım: chat <mesaj>`, exitCode: 0 };
+    }
+
+    if (sub === "list") {
+      const convs = await db.select({
+        id: conversationsTable.id, title: conversationsTable.title,
+        updatedAt: conversationsTable.updatedAt,
+      }).from(conversationsTable).orderBy(desc(conversationsTable.updatedAt)).limit(10);
+      if (convs.length === 0) return { output: "Sohbet bulunamadı. 'chat <mesaj>' ile yeni başlat.", exitCode: 0 };
+      const lines = convs.map(c => `  ${c.id.padEnd(24)} ${c.title.slice(0, 40).padEnd(42)} ${c.updatedAt.toISOString().slice(0, 16)}`);
+      return { output: ["ID                       BAŞLIK                                    GÜNCELLEME", ...lines].join("\n"), exitCode: 0 };
+    }
+
+    const message = args.join(" ");
+    if (!message) return { output: "Kullanım: chat <mesaj>\nÖrnek: chat Express.js ile basit bir auth servisi yaz", exitCode: 1 };
+
+    // Bağlamı oluştur
+    let projectContext = "";
+    if (ctx.project) {
+      const mem = ctx.project.memory as any;
+      projectContext = `Proje: ${ctx.project.name}\nStack: ${ctx.project.stack ?? "belirtilmedi"}\n${mem.summary ? "Özet: " + mem.summary : ""}`;
+    }
+
+    // Mevcut veya yeni konuşma bul
+    let [conv] = await db.select().from(conversationsTable)
+      .where(ctx.projectId ? eq(conversationsTable.projectId, ctx.projectId) : eq(conversationsTable.id, ""))
+      .orderBy(desc(conversationsTable.updatedAt)).limit(1);
+
+    if (!conv) {
+      const id = generateId("conv");
+      const [created] = await db.insert(conversationsTable).values({
+        id, title: message.slice(0, 60), projectId: ctx.projectId ?? undefined, messages: [],
+      }).returning();
+      conv = created;
+    }
+
+    const messages = (conv.messages ?? []) as ChatMessage[];
+    messages.push({ role: "user", content: message, ts: new Date().toISOString() });
+
+    const llmMessages = messages.filter(m => m.role !== "system").map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+    const result = await llmChat(llmMessages, { context: projectContext });
+
+    const assistantMsg: ChatMessage = {
+      role: "assistant", content: result.content, ts: new Date().toISOString(),
+      files: result.files.length > 0 ? result.files.map(f => ({ path: f.path, content: f.content, language: f.language })) : undefined,
+    };
+    messages.push(assistantMsg);
+
+    await db.update(conversationsTable).set({
+      messages: messages as any, updatedAt: new Date(),
+    }).where(eq(conversationsTable.id, conv.id));
+
+    const fileLines = result.files.length > 0
+      ? ["\n📄 Oluşturulan dosyalar:", ...result.files.map(f => `  • ${f.path} (${f.language})`)]
+      : [];
+
+    // Markdown'ı sadeleştir
+    const cleanContent = result.content
+      .replace(/```file:[^\n]+\n[\s\S]*?```/g, (m) => {
+        const pathMatch = m.match(/```file:([^\n]+)/);
+        return pathMatch ? `[Dosya oluşturuldu: ${pathMatch[1]}]` : "[dosya]";
+      })
+      .replace(/\*\*/g, "").replace(/`/g, "'");
+
+    return {
+      output: [`[${result.model} — ${result.source}]`, "", cleanContent, ...fileLines].join("\n"),
+      exitCode: 0,
+    };
   }
 
   return {

@@ -111,6 +111,27 @@ export const insertActivitySchema = createInsertSchema(activityTable).omit({ cre
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activityTable.$inferSelect;
 
+export type ChatMessage = {
+  role: "user" | "assistant" | "system";
+  content: string;
+  ts: string;
+  files?: Array<{ path: string; content: string; language: string }>;
+  thinking?: string;
+};
+
+export const conversationsTable = pgTable("conversations", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id"),
+  title: text("title").notNull().default("Yeni Sohbet"),
+  messages: jsonb("messages").notNull().$type<ChatMessage[]>().default([]),
+  model: text("model"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export const insertConversationSchema = createInsertSchema(conversationsTable).omit({ createdAt: true, updatedAt: true });
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversationsTable.$inferSelect;
+
 export type ModelSource = {
   id: string;
   type: "ollama" | "openai" | "anthropic" | "custom";
