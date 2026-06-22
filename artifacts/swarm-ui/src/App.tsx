@@ -13,6 +13,7 @@ import Agents from "@/pages/agents";
 import Snapshots from "@/pages/snapshots";
 import Workspace from "@/pages/workspace";
 import Terminal from "@/pages/terminal";
+import Models from "@/pages/models";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 2000, retry: 1 } },
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/snapshots" component={Snapshots} />
         <Route path="/workspace" component={Workspace} />
         <Route path="/terminal" component={Terminal} />
+        <Route path="/models" component={Models} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

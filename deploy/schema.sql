@@ -149,6 +149,25 @@ CREATE INDEX activity_created_idx ON activity(created_at DESC);
 CREATE INDEX activity_type_idx    ON activity(type);
 
 -- ============================================================
+-- model_configs
+-- Global model yapılandırması + ajan bazında override + harici kaynaklar
+-- ============================================================
+CREATE TABLE model_configs (
+    id              TEXT PRIMARY KEY,
+    name            TEXT NOT NULL DEFAULT 'default',
+    mode            TEXT NOT NULL DEFAULT 'global'
+                        CHECK (mode IN ('global','per_agent')),
+    global_model    TEXT NOT NULL DEFAULT 'qwen2.5-coder:7b',
+    agent_overrides JSONB NOT NULL DEFAULT '{}',
+    sources         JSONB NOT NULL DEFAULT '[]',
+    is_default      BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX mc_default_idx ON model_configs(is_default);
+
+-- ============================================================
 -- cli_history
 -- Terminal komut geçmişi
 -- ============================================================

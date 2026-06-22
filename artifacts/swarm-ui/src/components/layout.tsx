@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Activity, Cpu, PlayCircle, HardDrive, FolderOpen,
-  Layers, Terminal, SquareTerminal,
+  Layers, Terminal, SquareTerminal, BrainCircuit,
 } from "lucide-react";
 import { useGetStats, useListRuns } from "@workspace/api-client-react";
 
@@ -25,6 +25,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: "Terminal", href: "/terminal", icon: SquareTerminal },
   ];
   const systemNav = [
+    { label: "Models", href: "/models", icon: BrainCircuit },
     { label: "Agents", href: "/agents", icon: Cpu, badge: stats?.totalAgents },
     { label: "Snapshots", href: "/snapshots", icon: HardDrive },
     { label: "Workspace", href: "/workspace", icon: FolderOpen },

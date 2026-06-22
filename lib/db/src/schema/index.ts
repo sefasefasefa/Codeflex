@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real, timestamp, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, real, timestamp, jsonb, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -110,6 +110,31 @@ export const activityTable = pgTable("activity", {
 export const insertActivitySchema = createInsertSchema(activityTable).omit({ createdAt: true });
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 export type Activity = typeof activityTable.$inferSelect;
+
+export type ModelSource = {
+  id: string;
+  type: "ollama" | "openai" | "anthropic" | "custom";
+  label: string;
+  url: string;
+  apiKey?: string;
+  isDefault: boolean;
+  models?: string[];
+};
+
+export const modelConfigsTable = pgTable("model_configs", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().default("default"),
+  mode: text("mode").notNull().default("global"),
+  globalModel: text("global_model").notNull().default("qwen2.5-coder:7b"),
+  agentOverrides: jsonb("agent_overrides").notNull().$type<Record<string, string>>().default({}),
+  sources: jsonb("sources").notNull().$type<ModelSource[]>().default([]),
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+export const insertModelConfigSchema = createInsertSchema(modelConfigsTable).omit({ createdAt: true, updatedAt: true });
+export type InsertModelConfig = z.infer<typeof insertModelConfigSchema>;
+export type ModelConfig = typeof modelConfigsTable.$inferSelect;
 
 export const cliHistoryTable = pgTable("cli_history", {
   id: text("id").primaryKey(),
