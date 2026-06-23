@@ -172,6 +172,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/compressor':
+        specifier: workspace:*
+        version: link:../../lib/compressor
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
@@ -822,6 +825,8 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 3.25.76
+
+  lib/compressor: {}
 
   lib/db:
     dependencies:

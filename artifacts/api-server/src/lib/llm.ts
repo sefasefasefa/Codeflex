@@ -3,6 +3,7 @@ import { modelConfigsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { writeFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
+import { compressMessages } from "@workspace/compressor";
 
 export type LLMMessage = { role: "user" | "assistant" | "system"; content: string };
 export type ParsedFile = { path: string; content: string; language: string };
@@ -227,7 +228,12 @@ export async function chat(
     ? `${SYSTEM_PROMPT}\n\n## Proje Bağlamı\n${options.context}`
     : SYSTEM_PROMPT;
 
-  const fullMessages: LLMMessage[] = [{ role: "system", content: systemContent }, ...userMessages];
+  const rawMessages: LLMMessage[] = [{ role: "system", content: systemContent }, ...userMessages];
+  const { messages: fullMessages, stats } = compressMessages(rawMessages, { logStats: true });
+  if (stats.totalSavedTokens > 0) {
+    console.log(`[llm] context compressed: -${stats.totalSavedTokens} tokens (-${stats.savedPercent.toFixed(1)}%)`);
+  }
+
   let rawContent = "";
   let source: LLMResult["source"] = "mock";
 
@@ -303,7 +309,11 @@ export async function agentChat(
     options.context ? `\n## Proje Bağlamı\n${options.context}` : "",
   ].filter(Boolean).join("\n");
 
-  const fullMessages: LLMMessage[] = [{ role: "system", content: agentSystemPrompt }, ...userMessages];
+  const rawAgentMessages: LLMMessage[] = [{ role: "system", content: agentSystemPrompt }, ...userMessages];
+  const { messages: fullMessages, stats: agentStats } = compressMessages(rawAgentMessages, { logStats: true });
+  if (agentStats.totalSavedTokens > 0) {
+    console.log(`[llm:${agent.key}] context compressed: -${agentStats.totalSavedTokens} tokens (-${agentStats.savedPercent.toFixed(1)}%)`);
+  }
 
   let rawContent = "";
   let source: LLMResult["source"] = "mock";
