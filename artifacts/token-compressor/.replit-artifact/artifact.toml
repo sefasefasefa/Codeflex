@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Token Compressor"
+version = "1.0.0"
+id = "artifacts/token-compressor"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22419
+
+[services.development]
+run = "pnpm --filter @workspace/token-compressor run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/token-compressor", "run", "build" ]
+publicDir = "artifacts/token-compressor/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22419"
+BASE_PATH = "/"
