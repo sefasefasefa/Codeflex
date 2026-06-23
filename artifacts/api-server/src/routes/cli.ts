@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { cliHistoryTable, projectsTable, runsTable, agentsTable, projectFilesTable, conversationsTable } from "@workspace/db";
 import type { ChatMessage } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
 import { chat as llmChat, agentChat } from "../lib/llm.js";
@@ -56,8 +56,8 @@ async function handleCommand(command: string, ctx: CmdContext): Promise<{ output
   }
 
   if (cmd === "status") {
-    const [agentCount] = await db.select({ c: db.$count(agentsTable) }).from(agentsTable);
-    const [projCount] = await db.select({ c: db.$count(projectsTable) }).from(projectsTable);
+    const [agentCount] = await db.select({ c: sql<number>`count(*)::int` }).from(agentsTable);
+    const [projCount] = await db.select({ c: sql<number>`count(*)::int` }).from(projectsTable);
     const runs = await db.select({ status: runsTable.status }).from(runsTable);
     const active = runs.filter(r => r.status === "running").length;
     const done = runs.filter(r => r.status === "completed").length;

@@ -826,6 +826,22 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
 
+  lib/cli:
+    dependencies:
+      '@workspace/compressor':
+        specifier: workspace:*
+        version: link:../compressor
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.2
+      esbuild:
+        specifier: 0.27.3
+        version: 0.27.3
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
+
   lib/compressor: {}
 
   lib/db:

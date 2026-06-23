@@ -1,0 +1,22 @@
+{
+  "name": "@workspace/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "swarm": "./bin/swarm.mjs"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node --enable-source-maps ./dist/cli.mjs",
+    "start": "node --enable-source-maps ./dist/cli.mjs"
+  },
+  "dependencies": {
+    "@workspace/compressor": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "esbuild": "0.27.3",
+    "tsx": "catalog:"
+  }
+}
