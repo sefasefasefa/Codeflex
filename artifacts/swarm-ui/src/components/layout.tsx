@@ -6,7 +6,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Activity, Cpu, PlayCircle, HardDrive, FolderOpen,
-  Layers, Terminal, SquareTerminal, BrainCircuit, MessageSquare,
+  Layers, Terminal, SquareTerminal, BrainCircuit, MessageSquare, BotMessageSquare,
 } from "lucide-react";
 import { useGetStats, useListRuns } from "@workspace/api-client-react";
 
@@ -22,6 +22,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
   const pipelineNav = [
     { label: "Chat", href: "/chat", icon: MessageSquare },
+    { label: "Ajan Sohbet", href: "/agent-chat", icon: BotMessageSquare },
     { label: "Runs", href: "/runs", icon: PlayCircle, badge: activeRuns || undefined },
     { label: "Terminal", href: "/terminal", icon: SquareTerminal },
   ];

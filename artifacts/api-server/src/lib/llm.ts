@@ -10,7 +10,7 @@ export type LLMResult = {
   content: string;
   model: string;
   files: ParsedFile[];
-  source: "ollama" | "openai" | "anthropic" | "openrouter" | "groq" | "gemini" | "mock";
+  source: "ollama" | "openai" | "anthropic" | "openrouter" | "groq" | "gemini" | "mistral" | "mock";
 };
 
 const SYSTEM_PROMPT = `Sen SWARM_CTRL'nin yerleşik AI kodlama asistanısın. Kullanıcının dosya oluşturmasına, kod yazmasına ve projesini geliştirmesine yardım edersin.
@@ -40,6 +40,7 @@ type ResolvedCfg =
   | { type: "openrouter"; model: string; apiKey: string }
   | { type: "groq";       model: string; apiKey: string }
   | { type: "gemini";     model: string; apiKey: string }
+  | { type: "mistral";    model: string; apiKey: string }
   | { type: "mock";       model: string };
 
 async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
@@ -67,7 +68,8 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
     if (defaultSrc.type === "ollama") return { type: "ollama", model, ollamaUrl: defaultSrc.url };
   }
 
-  // Fallback sırası: groq > openrouter > openai > anthropic > gemini > ollama > mock
+  // Fallback sırası: mistral > groq > openrouter > openai > anthropic > gemini > ollama > mock
+  const mistral    = find("mistral");
   const groq       = find("groq");
   const openrouter = find("openrouter");
   const openai     = find("openai");
@@ -75,6 +77,7 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
   const gemini     = find("gemini");
   const ollama     = find("ollama");
 
+  if (mistral?.apiKey)    return { type: "mistral",    model, apiKey: mistral.apiKey };
   if (groq?.apiKey)       return { type: "groq",       model, apiKey: groq.apiKey };
   if (openrouter?.apiKey) return { type: "openrouter", model, apiKey: openrouter.apiKey };
   if (openai?.apiKey)     return { type: "openai",     model, apiKey: openai.apiKey, url: openai.url || "https://api.openai.com" };
@@ -252,6 +255,10 @@ export async function chat(
         rawContent = await callOpenAICompat(cfg.apiKey, "https://api.groq.com/openai/v1", cfg.model, fullMessages);
         source = "groq";
         break;
+      case "mistral":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.mistral.ai/v1", cfg.model, fullMessages);
+        source = "mistral";
+        break;
       case "anthropic":
         rawContent = await callAnthropic(cfg.apiKey, cfg.model, fullMessages);
         source = "anthropic";
@@ -271,6 +278,70 @@ export async function chat(
 
   const { content, files } = parseFiles(rawContent);
   return { content, files, model: cfg.model, source };
+}
+
+// ── Agent-persona chat ─────────────────────────────────────────────────────────
+export async function agentChat(
+  agent: { key: string; role: string; description?: string | null; modelName?: string | null },
+  userMessages: LLMMessage[],
+  options: { context?: string } = {}
+): Promise<LLMResult> {
+  const cfg = await getConfig(agent.key);
+
+  // Agent'ın kendi modeli varsa onu kullan
+  const model = (agent.modelName && agent.modelName.trim()) ? agent.modelName : cfg.model;
+  const resolvedCfg = { ...cfg, model };
+
+  const agentSystemPrompt = [
+    `Sen "${agent.key}" kod adlı bir AI ajanısın.`,
+    `Rolün: ${agent.role}`,
+    agent.description ? `Açıklama: ${agent.description}` : "",
+    "",
+    "Bu role tamamen uy. Konuşma tarzın, uzmanlık alanın ve önceliklerin bu rolü yansıtmalı.",
+    "Kısa, net ve profesyonel yanıtlar ver.",
+    "Kod yazarken ```file:<yol> formatını kullanabilirsin.",
+    options.context ? `\n## Proje Bağlamı\n${options.context}` : "",
+  ].filter(Boolean).join("\n");
+
+  const fullMessages: LLMMessage[] = [{ role: "system", content: agentSystemPrompt }, ...userMessages];
+
+  let rawContent = "";
+  let source: LLMResult["source"] = "mock";
+
+  try {
+    switch (resolvedCfg.type) {
+      case "ollama":
+        rawContent = await callOllama(resolvedCfg.ollamaUrl, resolvedCfg.model, fullMessages);
+        source = "ollama"; break;
+      case "openai":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, resolvedCfg.url, resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "openrouter":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://openrouter.ai/api/v1", resolvedCfg.model, fullMessages, { "HTTP-Referer": "https://swarm-ctrl.app", "X-Title": "SWARM_CTRL" });
+        source = "openrouter"; break;
+      case "groq":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.groq.com/openai/v1", resolvedCfg.model, fullMessages);
+        source = "groq"; break;
+      case "mistral":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.mistral.ai/v1", resolvedCfg.model, fullMessages);
+        source = "mistral"; break;
+      case "anthropic":
+        rawContent = await callAnthropic(resolvedCfg.apiKey, resolvedCfg.model, fullMessages);
+        source = "anthropic"; break;
+      case "gemini":
+        rawContent = await callGemini(resolvedCfg.apiKey, resolvedCfg.model, fullMessages);
+        source = "gemini"; break;
+      default:
+        rawContent = `[${agent.key}] Henüz bir LLM kaynağı bağlı değil. Models sayfasından ekleyin.`;
+        source = "mock";
+    }
+  } catch (err: any) {
+    rawContent = errorResponse(err, resolvedCfg);
+    source = "mock";
+  }
+
+  const { content, files } = parseFiles(rawContent);
+  return { content, files, model: resolvedCfg.model, source };
 }
 
 export function writeFilesToDisk(files: ParsedFile[], workspaceRoot: string, projectName?: string) {

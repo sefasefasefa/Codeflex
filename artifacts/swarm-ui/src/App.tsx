@@ -15,6 +15,7 @@ import Workspace from "@/pages/workspace";
 import Terminal from "@/pages/terminal";
 import Models from "@/pages/models";
 import Chat from "@/pages/chat";
+import AgentChat from "@/pages/agent-chat";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 2000, retry: 1 } },
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/models" component={Models} />
         <Route path="/chat" component={Chat} />
         <Route path="/chat/:id" component={Chat} />
+        <Route path="/agent-chat" component={AgentChat} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

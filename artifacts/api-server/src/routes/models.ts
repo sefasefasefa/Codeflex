@@ -122,6 +122,24 @@ router.get("/catalog", (_req, res) => {
       isFree: true,
       models: GEMINI_FREE_MODELS,
     },
+    mistral: {
+      type: "mistral",
+      label: "Mistral AI",
+      description: "Mistral, Codestral — Avrupa merkezli, kod ve çok dilli mükemmel",
+      url: "https://api.mistral.ai/v1",
+      signupUrl: "https://console.mistral.ai",
+      icon: "🌪️",
+      isFree: true,
+      models: [
+        "mistral-small-latest",
+        "mistral-medium-latest",
+        "mistral-large-latest",
+        "codestral-latest",
+        "open-mistral-nemo",
+        "open-codestral-muse",
+        "pixtral-large-latest",
+      ],
+    },
     ollama: {
       type: "ollama",
       label: "Ollama (Yerel)",
@@ -271,6 +289,21 @@ router.post("/test", async (req, res) => {
         return res.json({ ok: true, models: GEMINI_FREE_MODELS, message: "Gemini API key geçerli" });
       } catch (err: any) {
         return res.json({ ok: false, message: `Gemini hatası: ${err.message}` });
+      }
+    }
+
+    if (type === "mistral") {
+      if (!apiKey) return res.json({ ok: false, message: "API key gerekli" });
+      try {
+        const resp = await fetch("https://api.mistral.ai/v1/models", {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const json = await resp.json() as any;
+        const models: string[] = (json.data ?? []).map((m: any) => m.id as string);
+        return res.json({ ok: true, models, message: `Mistral bağlantısı başarılı — ${models.length} model` });
+      } catch (err: any) {
+        return res.json({ ok: false, message: `Mistral hatası: ${err.message}` });
       }
     }
 

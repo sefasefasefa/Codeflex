@@ -5,7 +5,7 @@ import type { ChatMessage } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
-import { chat as llmChat } from "../lib/llm.js";
+import { chat as llmChat, agentChat } from "../lib/llm.js";
 
 const router = Router();
 
@@ -159,6 +159,61 @@ async function handleCommand(command: string, ctx: CmdContext): Promise<{ output
 
   if (cmd === "clear") {
     return { output: "\x1bc", exitCode: 0 };
+  }
+
+  // Agent chat command: agent chat <key> <mesaj...>
+  if (cmd === "agent") {
+    const sub = args[0]?.toLowerCase();
+
+    if (!sub || sub === "list") {
+      const agents = await db.select({
+        key: agentsTable.key, role: agentsTable.role, modelName: agentsTable.modelName,
+      }).from(agentsTable).orderBy(agentsTable.createdAt);
+      if (agents.length === 0) return { output: "Ajan bulunamadı. Agents sayfasından ekleyin.", exitCode: 0 };
+      const lines = agents.map(a => `  ${a.key.padEnd(20)} ${(a.modelName ?? "global model").padEnd(30)} ${a.role.slice(0, 50)}`);
+      return { output: ["AJANLAR", "KEY                  MODEL                          ROL", ...lines].join("\n"), exitCode: 0 };
+    }
+
+    if (sub === "chat") {
+      const agentKey = args[1];
+      if (!agentKey) return { output: "Kullanım: agent chat <key> <mesaj>\nÖrnek: agent chat architect REST API tasarla", exitCode: 1 };
+
+      const message = args.slice(2).join(" ");
+      if (!message) return { output: `Kullanım: agent chat ${agentKey} <mesaj>`, exitCode: 1 };
+
+      const [agent] = await db.select().from(agentsTable).where(eq(agentsTable.key, agentKey));
+      if (!agent) return { output: `Ajan bulunamadı: "${agentKey}". "agent list" ile mevcut ajanları görün.`, exitCode: 1 };
+
+      let projectContext = "";
+      if (ctx.project) {
+        const mem = ctx.project.memory as any;
+        projectContext = `Proje: ${ctx.project.name}\nStack: ${ctx.project.stack ?? "belirtilmedi"}\n${mem.summary ? "Özet: " + mem.summary : ""}`;
+      }
+
+      const result = await agentChat(
+        { key: agent.key, role: agent.role, description: agent.description, modelName: agent.modelName },
+        [{ role: "user", content: message }],
+        { context: projectContext }
+      );
+
+      const fileLines = result.files.length > 0
+        ? ["\n📄 Oluşturulan dosyalar:", ...result.files.map(f => `  • ${f.path} (${f.language})`)]
+        : [];
+
+      const cleanContent = result.content
+        .replace(/```file:[^\n]+\n[\s\S]*?```/g, (m) => {
+          const pathMatch = m.match(/```file:([^\n]+)/);
+          return pathMatch ? `[Dosya oluşturuldu: ${pathMatch[1]}]` : "[dosya]";
+        })
+        .replace(/\*\*/g, "").replace(/`/g, "'");
+
+      return {
+        output: [`[${agent.key}] [${result.model} — ${result.source}]`, "", cleanContent, ...fileLines].join("\n"),
+        exitCode: 0,
+      };
+    }
+
+    return { output: `Bilinmeyen agent alt komutu: "${sub}". Kullanım: agent list | agent chat <key> <mesaj>`, exitCode: 1 };
   }
 
   // AI chat command
