@@ -1,3 +1,4 @@
+export * from "./auth";
 import { pgTable, text, integer, real, timestamp, jsonb, index, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
