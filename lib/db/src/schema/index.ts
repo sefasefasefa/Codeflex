@@ -134,7 +134,7 @@ export type Conversation = typeof conversationsTable.$inferSelect;
 
 export type ModelSource = {
   id: string;
-  type: "ollama" | "openai" | "anthropic" | "custom";
+  type: "ollama" | "openai" | "anthropic" | "openrouter" | "groq" | "gemini" | "custom";
   label: string;
   url: string;
   apiKey?: string;

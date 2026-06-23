@@ -1,19 +1,16 @@
 import { db } from "@workspace/db";
-import { modelConfigsTable, agentsTable } from "@workspace/db";
+import { modelConfigsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { writeFileSync, mkdirSync } from "fs";
 import { dirname, join } from "path";
 
 export type LLMMessage = { role: "user" | "assistant" | "system"; content: string };
-
 export type ParsedFile = { path: string; content: string; language: string };
-
 export type LLMResult = {
   content: string;
   model: string;
   files: ParsedFile[];
-  thinking?: string;
-  source: "ollama" | "openai" | "anthropic" | "mock";
+  source: "ollama" | "openai" | "anthropic" | "openrouter" | "groq" | "gemini" | "mock";
 };
 
 const SYSTEM_PROMPT = `Sen SWARM_CTRL'nin yerleşik AI kodlama asistanısın. Kullanıcının dosya oluşturmasına, kod yazmasına ve projesini geliştirmesine yardım edersin.
@@ -35,10 +32,20 @@ KURALLAR:
 - Kısa ve net ol — gereksiz sözcük kullanma
 - Eğer proje bağlamı verildiyse (bellek, dosyalar), bunu kullanarak önerilerde bulun`;
 
-async function getConfig(agentKey?: string) {
+// ── Config resolution ──────────────────────────────────────────────────────────
+type ResolvedCfg =
+  | { type: "ollama";     model: string; ollamaUrl: string }
+  | { type: "openai";     model: string; apiKey: string; url: string }
+  | { type: "anthropic";  model: string; apiKey: string }
+  | { type: "openrouter"; model: string; apiKey: string }
+  | { type: "groq";       model: string; apiKey: string }
+  | { type: "gemini";     model: string; apiKey: string }
+  | { type: "mock";       model: string };
+
+async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
   const [cfg] = await db.select().from(modelConfigsTable)
     .where(eq(modelConfigsTable.isDefault, true)).limit(1);
-  if (!cfg) return { model: "qwen2.5-coder:7b", ollamaUrl: "http://localhost:11434", type: "ollama" as const };
+  if (!cfg) return { type: "ollama", model: "qwen2.5-coder:7b", ollamaUrl: "http://localhost:11434" };
 
   let model = cfg.globalModel;
   if (agentKey && cfg.mode === "per_agent") {
@@ -47,22 +54,41 @@ async function getConfig(agentKey?: string) {
   }
 
   const sources = (cfg.sources as any[]);
-  const ollamaSrc = sources.find((s: any) => s.type === "ollama" && s.isDefault) || sources.find((s: any) => s.type === "ollama");
-  const openaiSrc = sources.find((s: any) => s.type === "openai");
-  const anthropicSrc = sources.find((s: any) => s.type === "anthropic");
+  const find = (type: string) => sources.find((s: any) => s.type === type && s.apiKey) || sources.find((s: any) => s.type === type);
+  const defaultSrc = sources.find((s: any) => s.isDefault);
 
-  if (openaiSrc?.apiKey) return { model, type: "openai" as const, apiKey: openaiSrc.apiKey, url: openaiSrc.url || "https://api.openai.com" };
-  if (anthropicSrc?.apiKey) return { model, type: "anthropic" as const, apiKey: anthropicSrc.apiKey };
-  if (ollamaSrc) return { model, type: "ollama" as const, ollamaUrl: ollamaSrc.url };
-  return { model, type: "ollama" as const, ollamaUrl: "http://localhost:11434" };
+  // Default kaynak varsa onu kullan
+  if (defaultSrc) {
+    if (defaultSrc.type === "groq"       && defaultSrc.apiKey) return { type: "groq",       model, apiKey: defaultSrc.apiKey };
+    if (defaultSrc.type === "openrouter" && defaultSrc.apiKey) return { type: "openrouter", model, apiKey: defaultSrc.apiKey };
+    if (defaultSrc.type === "openai"     && defaultSrc.apiKey) return { type: "openai",     model, apiKey: defaultSrc.apiKey, url: defaultSrc.url || "https://api.openai.com" };
+    if (defaultSrc.type === "anthropic"  && defaultSrc.apiKey) return { type: "anthropic",  model, apiKey: defaultSrc.apiKey };
+    if (defaultSrc.type === "gemini"     && defaultSrc.apiKey) return { type: "gemini",     model, apiKey: defaultSrc.apiKey };
+    if (defaultSrc.type === "ollama") return { type: "ollama", model, ollamaUrl: defaultSrc.url };
+  }
+
+  // Fallback sırası: groq > openrouter > openai > anthropic > gemini > ollama > mock
+  const groq       = find("groq");
+  const openrouter = find("openrouter");
+  const openai     = find("openai");
+  const anthropic  = find("anthropic");
+  const gemini     = find("gemini");
+  const ollama     = find("ollama");
+
+  if (groq?.apiKey)       return { type: "groq",       model, apiKey: groq.apiKey };
+  if (openrouter?.apiKey) return { type: "openrouter", model, apiKey: openrouter.apiKey };
+  if (openai?.apiKey)     return { type: "openai",     model, apiKey: openai.apiKey, url: openai.url || "https://api.openai.com" };
+  if (anthropic?.apiKey)  return { type: "anthropic",  model, apiKey: anthropic.apiKey };
+  if (gemini?.apiKey)     return { type: "gemini",     model, apiKey: gemini.apiKey };
+  if (ollama)             return { type: "ollama",     model, ollamaUrl: ollama.url };
+  return { type: "mock", model };
 }
 
+// ── File parser ────────────────────────────────────────────────────────────────
 function parseFiles(text: string): { content: string; files: ParsedFile[] } {
   const files: ParsedFile[] = [];
   const fileRegex = /```file:([^\n]+)\n([\s\S]*?)```/g;
   let match;
-  let clean = text;
-
   while ((match = fileRegex.exec(text)) !== null) {
     const rawPath = match[1].trim();
     const content = match[2];
@@ -74,14 +100,13 @@ function parseFiles(text: string): { content: string; files: ParsedFile[] } {
     };
     files.push({ path: rawPath, content, language: langMap[ext] || "text" });
   }
-
-  clean = text.replace(fileRegex, (_, path, content) =>
-    `\`\`\`${(path.split(".").pop() ?? "")}\n// 📄 ${path}\n${content}\`\`\``
+  const clean = text.replace(fileRegex, (_, path, content) =>
+    `\`\`\`${path.split(".").pop() ?? ""}\n// 📄 ${path}\n${content}\`\`\``
   );
-
   return { content: clean, files };
 }
 
+// ── Provider callers ───────────────────────────────────────────────────────────
 async function callOllama(ollamaUrl: string, model: string, messages: LLMMessage[]): Promise<string> {
   const url = ollamaUrl.replace(/\/$/, "");
   const controller = new AbortController();
@@ -94,26 +119,31 @@ async function callOllama(ollamaUrl: string, model: string, messages: LLMMessage
       signal: controller.signal,
     });
     clearTimeout(tid);
-    if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Ollama ${resp.status}: ${err}`);
-    }
+    if (!resp.ok) throw new Error(`Ollama ${resp.status}: ${await resp.text()}`);
     const json = await resp.json() as any;
     return json.message?.content ?? json.response ?? "";
-  } catch (err: any) {
-    clearTimeout(tid);
-    throw err;
-  }
+  } catch (err: any) { clearTimeout(tid); throw err; }
 }
 
-async function callOpenAI(apiKey: string, baseUrl: string, model: string, messages: LLMMessage[]): Promise<string> {
+async function callOpenAICompat(
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+  messages: LLMMessage[],
+  extraHeaders: Record<string, string> = {}
+): Promise<string> {
   const url = baseUrl.replace(/\/$/, "");
-  const resp = await fetch(`${url}/v1/chat/completions`, {
+  const endpoint = url.endsWith("/v1") ? `${url}/chat/completions` : `${url}/v1/chat/completions`;
+  const resp = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+      ...extraHeaders,
+    },
     body: JSON.stringify({ model, messages, max_tokens: 4096 }),
   });
-  if (!resp.ok) throw new Error(`OpenAI ${resp.status}: ${await resp.text()}`);
+  if (!resp.ok) throw new Error(`${url} → ${resp.status}: ${await resp.text()}`);
   const json = await resp.json() as any;
   return json.choices?.[0]?.message?.content ?? "";
 }
@@ -135,6 +165,56 @@ async function callAnthropic(apiKey: string, model: string, messages: LLMMessage
   return json.content?.[0]?.text ?? "";
 }
 
+async function callGemini(apiKey: string, model: string, messages: LLMMessage[]): Promise<string> {
+  const system = messages.find(m => m.role === "system")?.content ?? "";
+  const userMsgs = messages.filter(m => m.role !== "system");
+  const contents = userMsgs.map(m => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: [{ text: m.content }],
+  }));
+  const body: any = {
+    contents,
+    generationConfig: { maxOutputTokens: 4096 },
+  };
+  if (system) body.systemInstruction = { parts: [{ text: system }] };
+
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+  );
+  if (!resp.ok) throw new Error(`Gemini ${resp.status}: ${await resp.text()}`);
+  const json = await resp.json() as any;
+  return json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
+// ── Error message builder ──────────────────────────────────────────────────────
+function errorResponse(err: any, cfg: ResolvedCfg): string {
+  const lines = [
+    `⚠️ **LLM bağlantı hatası:** ${err.message}`,
+    "",
+    `**Provider:** ${cfg.type}  |  **Model:** ${cfg.model}`,
+    "",
+  ];
+
+  if (cfg.type === "ollama") {
+    lines.push(
+      "**Çözüm:**",
+      "- `ollama serve` çalıştırın",
+      `- \`ollama pull ${cfg.model}\` ile modeli indirin`,
+    );
+  } else if (cfg.type === "groq") {
+    lines.push("**Çözüm:** console.groq.com → API Keys → yeni key oluşturun → Models sayfasına ekleyin");
+  } else if (cfg.type === "openrouter") {
+    lines.push("**Çözüm:** openrouter.ai → Keys → API key oluşturun → Models sayfasına ekleyin");
+  } else if (cfg.type === "gemini") {
+    lines.push("**Çözüm:** aistudio.google.com → Get API key → Models sayfasına ekleyin");
+  } else {
+    lines.push("**Models** sayfasından kaynak bağlantısını test edin");
+  }
+  return lines.join("\n");
+}
+
+// ── Main export ────────────────────────────────────────────────────────────────
 export async function chat(
   userMessages: LLMMessage[],
   options: { agentKey?: string; context?: string } = {}
@@ -144,40 +224,48 @@ export async function chat(
     ? `${SYSTEM_PROMPT}\n\n## Proje Bağlamı\n${options.context}`
     : SYSTEM_PROMPT;
 
-  const fullMessages: LLMMessage[] = [
-    { role: "system", content: systemContent },
-    ...userMessages,
-  ];
-
+  const fullMessages: LLMMessage[] = [{ role: "system", content: systemContent }, ...userMessages];
   let rawContent = "";
   let source: LLMResult["source"] = "mock";
 
   try {
-    if (cfg.type === "ollama") {
-      rawContent = await callOllama(cfg.ollamaUrl!, cfg.model, fullMessages);
-      source = "ollama";
-    } else if (cfg.type === "openai") {
-      rawContent = await callOpenAI(cfg.apiKey!, cfg.url || "https://api.openai.com", cfg.model, fullMessages);
-      source = "openai";
-    } else if (cfg.type === "anthropic") {
-      rawContent = await callAnthropic(cfg.apiKey!, cfg.model, fullMessages);
-      source = "anthropic";
-    } else {
-      rawContent = mockResponse(userMessages[userMessages.length - 1]?.content ?? "");
-      source = "mock";
+    switch (cfg.type) {
+      case "ollama":
+        rawContent = await callOllama(cfg.ollamaUrl, cfg.model, fullMessages);
+        source = "ollama";
+        break;
+      case "openai":
+        rawContent = await callOpenAICompat(cfg.apiKey, cfg.url, cfg.model, fullMessages);
+        source = "openai";
+        break;
+      case "openrouter":
+        rawContent = await callOpenAICompat(
+          cfg.apiKey,
+          "https://openrouter.ai/api/v1",
+          cfg.model,
+          fullMessages,
+          { "HTTP-Referer": "https://swarm-ctrl.app", "X-Title": "SWARM_CTRL" }
+        );
+        source = "openrouter";
+        break;
+      case "groq":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.groq.com/openai/v1", cfg.model, fullMessages);
+        source = "groq";
+        break;
+      case "anthropic":
+        rawContent = await callAnthropic(cfg.apiKey, cfg.model, fullMessages);
+        source = "anthropic";
+        break;
+      case "gemini":
+        rawContent = await callGemini(cfg.apiKey, cfg.model, fullMessages);
+        source = "gemini";
+        break;
+      default:
+        rawContent = mockResponse(userMessages[userMessages.length - 1]?.content ?? "");
+        source = "mock";
     }
   } catch (err: any) {
-    rawContent = [
-      `⚠️ LLM bağlantı hatası: **${err.message}**`,
-      "",
-      `**Model:** ${cfg.model} (${cfg.type})`,
-      cfg.type === "ollama" ? `**Ollama URL:** ${cfg.ollamaUrl}` : "",
-      "",
-      "**Çözüm önerileri:**",
-      "- Ollama çalışıyor mu? `ollama serve` komutunu deneyin",
-      "- Model yüklü mü? `ollama pull " + cfg.model + "` deneyin",
-      "- Models sayfasından kaynak bağlantısını test edin",
-    ].filter(Boolean).join("\n");
+    rawContent = errorResponse(err, cfg);
     source = "mock";
   }
 
@@ -194,9 +282,7 @@ export function writeFilesToDisk(files: ParsedFile[], workspaceRoot: string, pro
       mkdirSync(dirname(full), { recursive: true });
       writeFileSync(full, f.content, "utf8");
       written.push(f.path);
-    } catch {
-      // ignore write errors in cloud env
-    }
+    } catch { /* ignore in cloud env */ }
   }
   return written;
 }
@@ -205,13 +291,11 @@ function mockResponse(input: string): string {
   return [
     `Mesajınızı aldım: _"${input.slice(0, 80)}${input.length > 80 ? "..." : ""}"_`,
     "",
-    "**Şu anda bir LLM bağlı değil.** Aşağıdakileri yapabilirsiniz:",
+    "**Henüz bir LLM kaynağı bağlı değil.** Models sayfasından ücretsiz bir kaynak ekleyin:",
     "",
-    "1. **Yerel Ollama** kurun: `curl -fsSL https://ollama.com/install.sh | sh`",
-    "2. Bir model indirin: `ollama pull qwen2.5-coder:7b`",
-    "3. **Models** sayfasından Ollama URL'sini kaydedin (`http://localhost:11434`)",
-    "4. **Kaydet** ve **Modelleri Tara** butonuna tıklayın",
-    "",
-    "Veya OpenAI/Anthropic API key ile de bağlanabilirsiniz.",
+    "- **Groq** → console.groq.com (ücretsiz, çok hızlı — Llama, Mixtral)",
+    "- **OpenRouter** → openrouter.ai (ücretsiz — Mistral, DeepSeek, Gemma, Qwen)",
+    "- **Gemini** → aistudio.google.com (ücretsiz — Gemini Flash)",
+    "- **Ollama** → yerel kurulum, internet gerekmez",
   ].join("\n");
 }
