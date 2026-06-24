@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useSwarmSync } from "@/hooks/use-swarm-sync";
 
 import Layout from "@/components/layout";
 import NotFound from "@/pages/not-found";
@@ -55,7 +54,6 @@ function LoginScreen() {
 
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
-  useSwarmSync();
 
   if (isLoading) return <LoadingScreen />;
 

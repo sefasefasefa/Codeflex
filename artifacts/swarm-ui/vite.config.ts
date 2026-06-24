@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-const rawPort = process.env.PORT ?? "5000";
+const rawPort = process.env.PORT ?? "3001";
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
@@ -57,16 +57,6 @@ export default defineConfig({
     proxy: {
       "/api": {
         target: "http://localhost:8080",
-        changeOrigin: true,
-        ws: true,
-      },
-      "/studio": {
-        target: "http://localhost:3001",
-        changeOrigin: true,
-        ws: true,
-      },
-      "/cli": {
-        target: "http://localhost:3002",
         changeOrigin: true,
         ws: true,
       },

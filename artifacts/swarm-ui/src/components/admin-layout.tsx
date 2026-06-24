@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 type NavItem = { label: string; href: string; icon: React.ElementType; desc: string };
 
 const adminNav: NavItem[] = [
-  { label: "Providers",  href: "/admin/providers",  icon: BrainCircuit, desc: "LLM API anahtarları & modeller" },
-  { label: "Agents",     href: "/admin/agents",     icon: Cpu,          desc: "Ajan kayıt & konfigürasyon" },
-  { label: "Snapshots",  href: "/admin/snapshots",  icon: HardDrive,    desc: "Proje yedekleri" },
-  { label: "Workspace",  href: "/admin/workspace",  icon: FolderOpen,   desc: "Dosya yöneticisi" },
+  { label: "Providers",  href: "/providers",  icon: BrainCircuit, desc: "LLM API anahtarları & modeller" },
+  { label: "Agents",     href: "/agents",     icon: Cpu,          desc: "Ajan kayıt & konfigürasyon" },
+  { label: "Snapshots",  href: "/snapshots",  icon: HardDrive,    desc: "Proje yedekleri" },
+  { label: "Workspace",  href: "/workspace",  icon: FolderOpen,   desc: "Dosya yöneticisi" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -70,7 +70,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Admin top bar */}
         <div className="h-14 border-b border-border flex items-center px-6 gap-3 sticky top-0 bg-background/95 backdrop-blur z-10">
           <Terminal className="w-4 h-4 text-primary" />
-          <span className="text-sm font-mono text-muted-foreground">SWARM_CTRL</span>
+          <span className="text-sm font-mono text-muted-foreground">Admin Panel</span>
           <span className="text-muted-foreground/30">/</span>
           <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
           <span className="text-sm font-mono text-amber-400">

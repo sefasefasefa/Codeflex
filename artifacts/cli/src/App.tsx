@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useSwarmSync } from "@/hooks/use-swarm-sync";
 
 const queryClient = new QueryClient();
 
@@ -83,8 +82,6 @@ function AppNav() {
 
 function Terminal() {
   const { user, isAuthenticated, isLoading, login } = useAuth();
-  useSwarmSync();
-
   const [lines, setLines] = useState<Line[]>([
     makeLine("info", `Swarm Agent CLI — ${new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`),
     makeLine("info", `API: ${window.location.origin}${API}`),
