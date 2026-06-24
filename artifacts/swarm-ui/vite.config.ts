@@ -55,17 +55,17 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:8080",
         changeOrigin: true,
         ws: true,
       },
       "/studio": {
-        target: "http://localhost:3001",
+        target: "http://localhost:18425",
         changeOrigin: true,
         ws: true,
       },
       "/cli": {
-        target: "http://localhost:3002",
+        target: "http://localhost:23518",
         changeOrigin: true,
         ws: true,
       },
