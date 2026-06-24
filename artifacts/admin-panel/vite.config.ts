@@ -51,6 +51,10 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
     hmr: { overlay: false },
+    headers: {
+      "Cache-Control": "no-store",
+      "X-Frame-Options": "ALLOWALL",
+    },
     fs: {
       strict: true,
     },
