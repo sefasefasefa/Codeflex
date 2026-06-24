@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { readdirSync, statSync, readFileSync, existsSync } from "fs";
-import { join, relative, basename } from "path";
+import { join, relative, basename, resolve, normalize } from "path";
 import { GetWorkspaceFileQueryParams, ListWorkspaceFilesQueryParams } from "@workspace/api-zod";
 
 const router = Router();
 
-const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || "/home/runner/workspace";
+const WORKSPACE_ROOT = resolve(process.env.WORKSPACE_ROOT || "/home/runner/workspace");
 
 interface FileNode {
   path: string;
@@ -53,8 +53,12 @@ router.get("/", (req, res) => {
 
 router.get("/file", (req, res) => {
   const query = GetWorkspaceFileQueryParams.parse(req.query);
-  const full = join(WORKSPACE_ROOT, query.path.replace(/^\/+/, ""));
-  if (!existsSync(full)) return res.status(404).json({ error: "File not found" });
+  const safePath = normalize(query.path).replace(/^(\.\.(\/|\\|$))+/, "");
+  const full = resolve(WORKSPACE_ROOT, safePath);
+  if (!full.startsWith(WORKSPACE_ROOT + "/") && full !== WORKSPACE_ROOT) {
+    res.status(403).json({ error: "Access denied: path outside workspace" }); return;
+  }
+  if (!existsSync(full)) { res.status(404).json({ error: "File not found" }); return; }
   try {
     const content = readFileSync(full, "utf-8");
     res.json({ path: query.path, content, lines: content.split("\n").length });

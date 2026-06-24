@@ -2,7 +2,6 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { agentsTable, conversationsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { z } from "zod/v4";
 import { CreateAgentBody, UpdateAgentBody, GetAgentParams, UpdateAgentParams, DeleteAgentParams } from "@workspace/api-zod";
 import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
@@ -34,7 +33,7 @@ router.post("/", async (req, res) => {
 router.get("/:agentId", async (req, res) => {
   const { agentId } = GetAgentParams.parse(req.params);
   const [agent] = await db.select().from(agentsTable).where(eq(agentsTable.id, agentId));
-  if (!agent) return res.status(404).json({ error: "Agent not found" });
+  if (!agent) { res.status(404).json({ error: "Agent not found" }); return; }
   res.json(agentView(agent));
 });
 
@@ -42,7 +41,7 @@ router.put("/:agentId", async (req, res) => {
   const { agentId } = UpdateAgentParams.parse(req.params);
   const body = UpdateAgentBody.parse(req.body);
   const [agent] = await db.update(agentsTable).set(body).where(eq(agentsTable.id, agentId)).returning();
-  if (!agent) return res.status(404).json({ error: "Agent not found" });
+  if (!agent) { res.status(404).json({ error: "Agent not found" }); return; }
   broadcast("agent_updated", { agentId: agent.id, key: agent.key });
   res.json(agentView(agent));
 });
@@ -94,7 +93,7 @@ router.get("/:key/conversations/:convId", async (req, res) => {
   try {
     const [conv] = await db.select().from(conversationsTable)
       .where(eq(conversationsTable.id, req.params.convId));
-    if (!conv) return res.status(404).json({ error: "Sohbet bulunamadı" });
+    if (!conv) { res.status(404).json({ error: "Sohbet bulunamadı" }); return; }
     res.json(conv);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -111,18 +110,18 @@ router.post("/:key/chat", async (req, res) => {
       context?: string;
     };
 
-    if (!message?.trim()) return res.status(400).json({ error: "message gerekli" });
+    if (!message?.trim()) { res.status(400).json({ error: "message gerekli" }); return; }
 
     // Ajanı bul
     const [agent] = await db.select().from(agentsTable).where(eq(agentsTable.key, agentKey));
-    if (!agent) return res.status(404).json({ error: `Ajan bulunamadı: ${agentKey}` });
+    if (!agent) { res.status(404).json({ error: `Ajan bulunamadı: ${agentKey}` }); return; }
 
     // Konuşmayı bul veya oluştur
     let conv: typeof conversationsTable.$inferSelect;
     if (conversationId) {
       const [found] = await db.select().from(conversationsTable)
         .where(eq(conversationsTable.id, conversationId));
-      if (!found) return res.status(404).json({ error: "Sohbet bulunamadı" });
+      if (!found) { res.status(404).json({ error: "Sohbet bulunamadı" }); return; }
       conv = found;
     } else {
       const id = generateId("conv");

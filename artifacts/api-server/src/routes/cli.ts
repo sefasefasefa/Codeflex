@@ -303,7 +303,7 @@ async function handleCommand(command: string, ctx: CmdContext): Promise<{ output
 
 router.post("/", async (req, res) => {
   const { command, projectId, projectName } = req.body as { command: string; projectId?: string; projectName?: string };
-  if (!command?.trim()) return res.status(400).json({ error: "command is required" });
+  if (!command?.trim()) { res.status(400).json({ error: "command is required" }); return; }
   const start = Date.now();
   const ctx = await resolveContext(projectId, projectName);
   const { output, exitCode } = await handleCommand(command, ctx);

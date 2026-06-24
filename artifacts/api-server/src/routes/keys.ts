@@ -72,10 +72,11 @@ router.delete(
     if (!userId) return;
 
     const { id } = req.params;
+    const keyId = Array.isArray(id) ? id[0] : id;
 
     const deleted = await db
       .delete(apiKeysTable)
-      .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, userId)))
+      .where(and(eq(apiKeysTable.id, keyId), eq(apiKeysTable.userId, userId)))
       .returning({ id: apiKeysTable.id });
 
     if (deleted.length === 0) {

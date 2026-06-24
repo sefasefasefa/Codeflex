@@ -27,7 +27,8 @@ async function extractText(buffer: Buffer, ext: string, mimetype: string): Promi
 
   // PDF
   if (ext === ".pdf" || mimetype === "application/pdf") {
-    const pdfParse = (await import("pdf-parse")).default;
+    const pdfParseModule = await import("pdf-parse");
+    const pdfParse = (pdfParseModule as any).default ?? pdfParseModule;
     const data = await pdfParse(buffer);
     return data.text;
   }
@@ -108,7 +109,7 @@ async function extractText(buffer: Buffer, ext: string, mimetype: string): Promi
 
 router.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ error: "Dosya bulunamadı" });
+    res.status(400).json({ error: "Dosya bulunamadı" }); return;
   }
 
   const { originalname, buffer, mimetype, size } = req.file;

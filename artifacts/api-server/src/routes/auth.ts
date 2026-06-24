@@ -83,7 +83,6 @@ router.get("/callback", async (req: Request, res: Response) => {
     const tokens = await oidc.authorizationCodeGrant(config, currentUrl, {
       pkceCodeVerifier: codeVerifier,
       expectedState,
-      redirectUri,
     });
 
     const claims = tokens.claims();

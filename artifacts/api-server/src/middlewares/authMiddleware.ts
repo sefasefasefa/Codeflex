@@ -1,6 +1,6 @@
 import * as oidc from "openid-client";
 import { type Request, type Response, type NextFunction } from "express";
-import type { AuthUser } from "@workspace/api-zod";
+import type { User as DbUser } from "@workspace/db";
 import {
   clearSession,
   getOidcConfig,
@@ -8,7 +8,9 @@ import {
   getSession,
   updateSession,
   type SessionData,
-} from "../lib/auth";
+} from "../lib/auth.js";
+
+export type AuthUser = Pick<DbUser, "id" | "email" | "firstName" | "lastName" | "profileImageUrl">;
 
 declare global {
   namespace Express {
@@ -16,7 +18,6 @@ declare global {
 
     interface Request {
       isAuthenticated(): this is AuthedRequest;
-
       user?: User | undefined;
     }
 
@@ -37,10 +38,7 @@ async function refreshIfExpired(
 
   try {
     const config = await getOidcConfig();
-    const tokens = await oidc.refreshTokenGrant(
-      config,
-      session.refresh_token,
-    );
+    const tokens = await oidc.refreshTokenGrant(config, session.refresh_token);
     session.access_token = tokens.access_token;
     session.refresh_token = tokens.refresh_token ?? session.refresh_token;
     session.expires_at = tokens.expiresIn()

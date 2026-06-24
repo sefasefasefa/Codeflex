@@ -416,8 +416,9 @@ router.post("/", async (req, res) => {
     projectName: string; prompt: string; agentKeys: string[];
     parallelCount?: number; ollamaUrl?: string; projectId?: string;
   };
-  if (!projectName || !prompt || !agentKeys?.length)
-    return res.status(400).json({ error: "projectName, prompt and agentKeys are required" });
+  if (!projectName || !prompt || !agentKeys?.length) {
+    res.status(400).json({ error: "projectName, prompt and agentKeys are required" }); return;
+  }
 
   let resolvedProjectId: string | null = inputProjectId ?? null;
   if (!resolvedProjectId) {
@@ -454,7 +455,7 @@ router.post("/", async (req, res) => {
 router.get("/:runId", async (req, res) => {
   const { runId } = req.params as { runId: string };
   const [run] = await db.select().from(runsTable).where(eq(runsTable.id, runId));
-  if (!run) return res.status(404).json({ error: "Run not found" });
+  if (!run) { res.status(404).json({ error: "Run not found" }); return; }
   const logs = await db.select().from(runLogsTable).where(eq(runLogsTable.runId, runId)).orderBy(runLogsTable.createdAt);
   res.json({ ...runToJson(run), logs: logs.map(logToJson) });
 });
@@ -465,7 +466,7 @@ router.delete("/:runId", async (req, res) => {
     .set({ status: "cancelled", completedAt: new Date() })
     .where(eq(runsTable.id, runId))
     .returning();
-  if (!run) return res.status(404).json({ error: "Run not found" });
+  if (!run) { res.status(404).json({ error: "Run not found" }); return; }
   broadcast("run_cancelled", runToJson(run));
   res.json(runToJson(run));
 });

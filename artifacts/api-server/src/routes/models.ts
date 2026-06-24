@@ -174,7 +174,7 @@ router.post("/providers/refresh", async (req, res) => {
   try {
     const { providerId } = req.body as { providerId: string };
     const p = PROVIDERS.find(x => x.id === providerId);
-    if (!p) return res.status(404).json({ error: "Provider bulunamadı" });
+    if (!p) { res.status(404).json({ error: "Provider bulunamadı" }); return; }
 
     const cfg = await getDefaultConfig();
     const dbSources = (cfg.sources ?? []) as any[];
@@ -205,7 +205,7 @@ router.post("/providers/save-key", async (req, res) => {
   try {
     const { providerId, apiKey, baseUrl } = req.body as { providerId: string; apiKey: string; baseUrl?: string };
     const p = PROVIDERS.find(x => x.id === providerId);
-    if (!p) return res.status(404).json({ error: "Provider bulunamadı" });
+    if (!p) { res.status(404).json({ error: "Provider bulunamadı" }); return; }
 
     const cfg = await getDefaultConfig();
     let sources = (cfg.sources ?? []) as any[];

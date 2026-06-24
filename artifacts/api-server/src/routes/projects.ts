@@ -48,7 +48,7 @@ router.get("/", async (_req, res) => {
 
 router.post("/", async (req, res) => {
   const { name, description = "", stack } = req.body as { name: string; description?: string; stack?: string };
-  if (!name) return res.status(400).json({ error: "name is required" });
+  if (!name) { res.status(400).json({ error: "name is required" }); return; }
   const id = generateId("proj");
   const now = new Date().toISOString();
   const memory = { facts: [], summary: `Project "${name}" initialized.`, lastUpdated: now };
@@ -66,7 +66,7 @@ router.post("/", async (req, res) => {
 router.get("/:projectId", async (req, res) => {
   const { projectId } = req.params as { projectId: string };
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
   const recentRuns = await db.select().from(runsTable)
     .where(eq(runsTable.projectId, projectId))
     .orderBy(desc(runsTable.createdAt)).limit(10);
@@ -90,7 +90,7 @@ router.put("/:projectId", async (req, res) => {
   if (status) updates.status = status;
   if (stack !== undefined) updates.stack = stack;
   const [proj] = await db.update(projectsTable).set(updates).where(eq(projectsTable.id, projectId)).returning();
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
   broadcast("project_updated", projectToJson(proj));
   res.json(projectToJson(proj));
 });
@@ -109,7 +109,7 @@ router.patch("/:projectId/memory", async (req, res) => {
     summary?: string;
   };
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
   const now = new Date().toISOString();
   const existing = proj.memory as { facts: Array<{ key: string; value: string; source: string; createdAt: string }>; summary: string; lastUpdated: string };
   const merged = [
@@ -151,7 +151,7 @@ router.get("/:projectId/files/:fileId", async (req, res) => {
   const { projectId, fileId } = req.params as { projectId: string; fileId: string };
   const [file] = await db.select().from(projectFilesTable)
     .where(and(eq(projectFilesTable.id, fileId), eq(projectFilesTable.projectId, projectId)));
-  if (!file) return res.status(404).json({ error: "File not found" });
+  if (!file) { res.status(404).json({ error: "File not found" }); return; }
   const history = await db.select().from(projectFilesTable)
     .where(and(eq(projectFilesTable.projectId, projectId), eq(projectFilesTable.path, file.path)))
     .orderBy(desc(projectFilesTable.version));
@@ -167,14 +167,14 @@ router.get("/:projectId/files/:fileId", async (req, res) => {
 
 router.post("/import-github", async (req, res) => {
   const { repoUrl } = req.body as { repoUrl?: string };
-  if (!repoUrl) return res.status(400).json({ error: "repoUrl is required" });
+  if (!repoUrl) { res.status(400).json({ error: "repoUrl is required" }); return; }
 
   let imported;
   try {
     imported = await github.importRepoFiles(repoUrl);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "GitHub import başarısız oldu";
-    return res.status(400).json({ error: msg });
+    res.status(400).json({ error: msg }); return;
   }
 
   const { name, description, files } = imported;
@@ -238,17 +238,17 @@ router.post("/import-github", async (req, res) => {
 router.get("/:projectId/github", async (req, res) => {
   const { projectId } = req.params as { projectId: string };
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
   res.json(toGitHubStatus(proj));
 });
 
 router.post("/:projectId/github/init", async (req, res) => {
   const { projectId } = req.params as { projectId: string };
   if (!github.isGitHubConfigured()) {
-    return res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." });
+    res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." }); return;
   }
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
 
   const repoName = proj.id.replace(/_/g, "-");
 
@@ -269,12 +269,12 @@ router.post("/:projectId/github/init", async (req, res) => {
 router.post("/:projectId/github/push", async (req, res) => {
   const { projectId } = req.params as { projectId: string };
   if (!github.isGitHubConfigured()) {
-    return res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." });
+    res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." }); return;
   }
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj) { res.status(404).json({ error: "Project not found" }); return; }
   if (!proj.githubRepo) {
-    return res.status(400).json({ error: "GitHub repo not initialized. Call /github/init first." });
+    res.status(400).json({ error: "GitHub repo not initialized. Call /github/init first." }); return;
   }
 
   const allFiles = await db.select().from(projectFilesTable)
@@ -288,7 +288,7 @@ router.post("/:projectId/github/push", async (req, res) => {
 
   const fileList = Array.from(latestFiles.values()).map(f => ({ path: f.path, content: f.content }));
   if (!fileList.length) {
-    return res.status(400).json({ error: "No files to push. Run an agent first." });
+    res.status(400).json({ error: "No files to push. Run an agent first." }); return;
   }
 
   const now = new Date().toISOString();

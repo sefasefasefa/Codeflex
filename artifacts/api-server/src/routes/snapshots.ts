@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
 router.get("/:snapshotId", async (req, res) => {
   const { snapshotId } = GetSnapshotParams.parse(req.params);
   const [snap] = await db.select().from(snapshotsTable).where(eq(snapshotsTable.id, snapshotId));
-  if (!snap) return res.status(404).json({ error: "Snapshot not found" });
+  if (!snap) { res.status(404).json({ error: "Snapshot not found" }); return; }
   res.json(snapshotToJson(snap));
 });
 
@@ -55,7 +55,7 @@ router.delete("/:snapshotId", async (req, res) => {
 router.post("/:snapshotId/rollback", async (req, res) => {
   const { snapshotId } = RollbackSnapshotParams.parse(req.params);
   const [snap] = await db.select().from(snapshotsTable).where(eq(snapshotsTable.id, snapshotId));
-  if (!snap) return res.status(404).json({ error: "Snapshot not found" });
+  if (!snap) { res.status(404).json({ error: "Snapshot not found" }); return; }
   const actId = generateId("act");
   await db.insert(activityTable).values({
     id: actId, type: "snapshot_rolled_back",

@@ -31,7 +31,7 @@ router.post("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   const [conv] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, req.params.id));
-  if (!conv) return res.status(404).json({ error: "Conversation not found" });
+  if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
   res.json({ ...conv, createdAt: conv.createdAt.toISOString(), updatedAt: conv.updatedAt.toISOString() });
 });
 
@@ -46,16 +46,16 @@ router.patch("/:id", async (req, res) => {
     .set({ title, updatedAt: new Date() })
     .where(eq(conversationsTable.id, req.params.id))
     .returning();
-  if (!updated) return res.status(404).json({ error: "Not found" });
+  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() });
 });
 
 router.post("/:id/message", async (req, res) => {
   const { content, projectId: reqProjectId } = req.body as { content: string; projectId?: string };
-  if (!content?.trim()) return res.status(400).json({ error: "content is required" });
+  if (!content?.trim()) { res.status(400).json({ error: "content is required" }); return; }
 
   const [conv] = await db.select().from(conversationsTable).where(eq(conversationsTable.id, req.params.id));
-  if (!conv) return res.status(404).json({ error: "Conversation not found" });
+  if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
 
   const messages = (conv.messages ?? []) as ChatMessage[];
   const userMsg: ChatMessage = { role: "user", content: content.trim(), ts: new Date().toISOString() };

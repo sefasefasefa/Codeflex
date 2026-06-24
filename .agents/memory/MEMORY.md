@@ -1,1 +1,2 @@
 - [Dynamic Scheduler](dynamic-scheduler.md) — Semaphore+resource-monitor for true parallel subagent execution; capacity auto-scales with RAM/CPU
+- [AuthUser circular import fix](auth-circular-import.md) — AuthUser type lives in authMiddleware.ts (not api-zod); lib/auth.ts imports from authMiddleware.ts

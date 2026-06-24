@@ -106,7 +106,7 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
     if (defaultSrc.type === "lmstudio")         return { type: "lmstudio",  model, url: defaultSrc.url || "http://localhost:1234/v1" };
     if (defaultSrc.type === "llamacpp")         return { type: "llamacpp",  model, url: defaultSrc.url || "http://localhost:8080/v1" };
     if (COMPAT_PROVIDERS.includes(defaultSrc.type as CompatType) && key) {
-      return { type: defaultSrc.type as CompatType, model, apiKey: key };
+      return { type: defaultSrc.type as CompatType, model, apiKey: key } as ResolvedCfg;
     }
   }
 
@@ -118,7 +118,7 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
     if (ptype === "gemini"    && key) return { type: "gemini",    model, apiKey: key };
     if (ptype === "ollama")           { const src = find("ollama"); if (src) return { type: "ollama", model, ollamaUrl: src.url || "http://localhost:11434" }; }
     if (COMPAT_PROVIDERS.includes(ptype as CompatType) && key) {
-      return { type: ptype as CompatType, model, apiKey: key };
+      return { type: ptype as CompatType, model, apiKey: key } as ResolvedCfg;
     }
   }
 
@@ -128,7 +128,7 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
     if (!key) continue;
     if (ptype === "anthropic") return { type: "anthropic", model, apiKey: key };
     if (ptype === "gemini")    return { type: "gemini",    model, apiKey: key };
-    if (COMPAT_PROVIDERS.includes(ptype as CompatType)) return { type: ptype as CompatType, model, apiKey: key };
+    if (COMPAT_PROVIDERS.includes(ptype as CompatType)) return { type: ptype as CompatType, model, apiKey: key } as ResolvedCfg;
   }
 
   const mistral    = find("mistral");
