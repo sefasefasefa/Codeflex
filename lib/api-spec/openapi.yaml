@@ -190,6 +190,71 @@ paths:
         "404":
           description: Not found
 
+  /projects/{projectId}/github:
+    get:
+      operationId: getProjectGitHub
+      tags: [projects]
+      summary: Get GitHub repo status for this project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: GitHub status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubStatus"
+
+  /projects/{projectId}/github/init:
+    post:
+      operationId: initProjectGitHub
+      tags: [projects]
+      summary: Create and link a GitHub repo for this project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: GitHub repo created/linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubStatus"
+        "404":
+          description: Project not found
+        "400":
+          description: GitHub not configured
+
+  /projects/{projectId}/github/push:
+    post:
+      operationId: pushProjectToGitHub
+      tags: [projects]
+      summary: Push current project files to GitHub
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Push result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitHubPushResult"
+        "404":
+          description: Project not found
+        "400":
+          description: GitHub not configured or no files
+
   /agents:
     get:
       operationId: listAgents
@@ -668,6 +733,14 @@ components:
           type: string
         updatedAt:
           type: string
+        githubRepo:
+          type: ["string", "null"]
+        githubUrl:
+          type: ["string", "null"]
+        githubSha:
+          type: ["string", "null"]
+        githubPushedAt:
+          type: ["string", "null"]
 
     ProjectDetail:
       type: object
@@ -692,6 +765,14 @@ components:
           type: string
         updatedAt:
           type: string
+        githubRepo:
+          type: ["string", "null"]
+        githubUrl:
+          type: ["string", "null"]
+        githubSha:
+          type: ["string", "null"]
+        githubPushedAt:
+          type: ["string", "null"]
         memory:
           $ref: "#/components/schemas/ProjectMemory"
         recentRuns:
@@ -1129,3 +1210,31 @@ components:
       properties:
         eventType:
           type: string
+
+    GitHubStatus:
+      type: object
+      required: [connected]
+      properties:
+        connected:
+          type: boolean
+        repo:
+          type: ["string", "null"]
+        url:
+          type: ["string", "null"]
+        cloneUrl:
+          type: ["string", "null"]
+        sha:
+          type: ["string", "null"]
+        pushedAt:
+          type: ["string", "null"]
+
+    GitHubPushResult:
+      type: object
+      required: [sha, commitUrl, filesCount]
+      properties:
+        sha:
+          type: string
+        commitUrl:
+          type: string
+        filesCount:
+          type: integer

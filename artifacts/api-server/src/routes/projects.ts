@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { projectsTable, runsTable, projectFilesTable, activityTable } from "@workspace/db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
+import * as github from "../lib/github.js";
 
 const router = Router();
 
@@ -13,6 +14,22 @@ function projectToJson(p: typeof projectsTable.$inferSelect) {
     status: p.status, stack: p.stack ?? null,
     totalRuns: p.totalRuns, totalFiles: p.totalFiles,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(),
+    githubRepo: p.githubRepo ?? null,
+    githubUrl: p.githubUrl ?? null,
+    githubSha: p.githubSha ?? null,
+    githubPushedAt: p.githubPushedAt ? p.githubPushedAt.toISOString() : null,
+  };
+}
+
+function toGitHubStatus(p: typeof projectsTable.$inferSelect) {
+  const owner = github.getOwner();
+  return {
+    connected: !!p.githubRepo,
+    repo: p.githubRepo ?? null,
+    url: p.githubUrl ?? null,
+    cloneUrl: p.githubRepo ? `https://github.com/${owner}/${p.githubRepo}.git` : null,
+    sha: p.githubSha ?? null,
+    pushedAt: p.githubPushedAt ? p.githubPushedAt.toISOString() : null,
   };
 }
 
@@ -146,6 +163,76 @@ router.get("/:projectId/files/:fileId", async (req, res) => {
       runId: h.runId, operation: h.operation, createdAt: h.createdAt.toISOString(),
     })),
   });
+});
+
+router.get("/:projectId/github", async (req, res) => {
+  const { projectId } = req.params as { projectId: string };
+  const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!proj) return res.status(404).json({ error: "Project not found" });
+  res.json(toGitHubStatus(proj));
+});
+
+router.post("/:projectId/github/init", async (req, res) => {
+  const { projectId } = req.params as { projectId: string };
+  if (!github.isGitHubConfigured()) {
+    return res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." });
+  }
+  const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!proj) return res.status(404).json({ error: "Project not found" });
+
+  const repoName = proj.id.replace(/_/g, "-");
+
+  let repoInfo = await github.getRepo(repoName);
+  if (!repoInfo) {
+    repoInfo = await github.createRepo(repoName, `${proj.name} — Swarm Agent Project`);
+  }
+
+  const [updated] = await db.update(projectsTable)
+    .set({ githubRepo: repoName, githubUrl: repoInfo.html_url, updatedAt: new Date() })
+    .where(eq(projectsTable.id, projectId))
+    .returning();
+
+  broadcast("project_updated", projectToJson(updated));
+  res.json(toGitHubStatus(updated));
+});
+
+router.post("/:projectId/github/push", async (req, res) => {
+  const { projectId } = req.params as { projectId: string };
+  if (!github.isGitHubConfigured()) {
+    return res.status(400).json({ error: "GitHub not configured. Set GITHUB_TOKEN and GITHUB_OWNER." });
+  }
+  const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!proj) return res.status(404).json({ error: "Project not found" });
+  if (!proj.githubRepo) {
+    return res.status(400).json({ error: "GitHub repo not initialized. Call /github/init first." });
+  }
+
+  const allFiles = await db.select().from(projectFilesTable)
+    .where(eq(projectFilesTable.projectId, projectId))
+    .orderBy(desc(projectFilesTable.version));
+
+  const latestFiles = new Map<string, typeof allFiles[0]>();
+  for (const f of allFiles) {
+    if (!latestFiles.has(f.path)) latestFiles.set(f.path, f);
+  }
+
+  const fileList = Array.from(latestFiles.values()).map(f => ({ path: f.path, content: f.content }));
+  if (!fileList.length) {
+    return res.status(400).json({ error: "No files to push. Run an agent first." });
+  }
+
+  const now = new Date().toISOString();
+  const message = `Checkpoint ${now.slice(0, 19).replace("T", " ")} — ${fileList.length} files`;
+  const { sha, commitUrl } = await github.pushFiles(proj.githubRepo, fileList, message);
+
+  const [updated] = await db.update(projectsTable)
+    .set({ githubSha: sha, githubPushedAt: new Date(), updatedAt: new Date() })
+    .where(eq(projectsTable.id, projectId))
+    .returning();
+
+  broadcast("github_push", { projectId, sha, commitUrl, filesCount: fileList.length });
+
+  res.json({ sha, commitUrl, filesCount: fileList.length });
 });
 
 export default router;

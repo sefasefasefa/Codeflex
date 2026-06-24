@@ -20,6 +20,14 @@ export interface ProjectDetail {
   totalFiles: number;
   createdAt: string;
   updatedAt: string;
+  /** @nullable */
+  githubRepo?: string | null;
+  /** @nullable */
+  githubUrl?: string | null;
+  /** @nullable */
+  githubSha?: string | null;
+  /** @nullable */
+  githubPushedAt?: string | null;
   memory: ProjectMemory;
   recentRuns: Run[];
 }

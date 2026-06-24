@@ -43,6 +43,14 @@ export interface Project {
   totalFiles: number;
   createdAt: string;
   updatedAt: string;
+  /** @nullable */
+  githubRepo?: string | null;
+  /** @nullable */
+  githubUrl?: string | null;
+  /** @nullable */
+  githubSha?: string | null;
+  /** @nullable */
+  githubPushedAt?: string | null;
 }
 
 export type ProjectDetailStatus = typeof ProjectDetailStatus[keyof typeof ProjectDetailStatus];
@@ -94,6 +102,14 @@ export interface ProjectDetail {
   totalFiles: number;
   createdAt: string;
   updatedAt: string;
+  /** @nullable */
+  githubRepo?: string | null;
+  /** @nullable */
+  githubUrl?: string | null;
+  /** @nullable */
+  githubSha?: string | null;
+  /** @nullable */
+  githubPushedAt?: string | null;
   memory: ProjectMemory;
   recentRuns: Run[];
 }
@@ -397,6 +413,26 @@ export interface UserActivityLog {
 
 export interface UserActivityInput {
   eventType: string;
+}
+
+export interface GitHubStatus {
+  connected: boolean;
+  /** @nullable */
+  repo?: string | null;
+  /** @nullable */
+  url?: string | null;
+  /** @nullable */
+  cloneUrl?: string | null;
+  /** @nullable */
+  sha?: string | null;
+  /** @nullable */
+  pushedAt?: string | null;
+}
+
+export interface GitHubPushResult {
+  sha: string;
+  commitUrl: string;
+  filesCount: number;
 }
 
 export type ListRunsParams = {

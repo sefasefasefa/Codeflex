@@ -29,6 +29,8 @@ import type {
   CliResult,
   GetCliHistoryParams,
   GetWorkspaceFileParams,
+  GitHubPushResult,
+  GitHubStatus,
   HealthStatus,
   ListActivityParams,
   ListRunsParams,
@@ -740,6 +742,223 @@ export function useGetProjectFile<TData = Awaited<ReturnType<typeof getProjectFi
 
 
 
+
+export const getGetProjectGitHubUrl = (projectId: string,) => {
+
+
+
+
+  return `/api/projects/${projectId}/github`
+}
+
+/**
+ * @summary Get GitHub repo status for this project
+ */
+export const getProjectGitHub = async (projectId: string, options?: RequestInit): Promise<GitHubStatus> => {
+
+  return customFetch<GitHubStatus>(getGetProjectGitHubUrl(projectId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProjectGitHubQueryKey = (projectId: string,) => {
+    return [
+    `/api/projects/${projectId}/github`
+    ] as const;
+    }
+
+
+export const getGetProjectGitHubQueryOptions = <TData = Awaited<ReturnType<typeof getProjectGitHub>>, TError = ErrorType<unknown>>(projectId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectGitHub>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProjectGitHubQueryKey(projectId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectGitHub>>> = ({ signal }) => getProjectGitHub(projectId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProjectGitHub>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProjectGitHubQueryResult = NonNullable<Awaited<ReturnType<typeof getProjectGitHub>>>
+export type GetProjectGitHubQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get GitHub repo status for this project
+ */
+
+export function useGetProjectGitHub<TData = Awaited<ReturnType<typeof getProjectGitHub>>, TError = ErrorType<unknown>>(
+ projectId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProjectGitHub>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProjectGitHubQueryOptions(projectId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getInitProjectGitHubUrl = (projectId: string,) => {
+
+
+
+
+  return `/api/projects/${projectId}/github/init`
+}
+
+/**
+ * @summary Create and link a GitHub repo for this project
+ */
+export const initProjectGitHub = async (projectId: string, options?: RequestInit): Promise<GitHubStatus> => {
+
+  return customFetch<GitHubStatus>(getInitProjectGitHubUrl(projectId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getInitProjectGitHubMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initProjectGitHub>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof initProjectGitHub>>, TError,{projectId: string}, TContext> => {
+
+const mutationKey = ['initProjectGitHub'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof initProjectGitHub>>, {projectId: string}> = (props) => {
+          const {projectId} = props ?? {};
+
+          return  initProjectGitHub(projectId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type InitProjectGitHubMutationResult = NonNullable<Awaited<ReturnType<typeof initProjectGitHub>>>
+
+    export type InitProjectGitHubMutationError = ErrorType<void>
+
+    /**
+ * @summary Create and link a GitHub repo for this project
+ */
+export const useInitProjectGitHub = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initProjectGitHub>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof initProjectGitHub>>,
+        TError,
+        {projectId: string},
+        TContext
+      > => {
+      return useMutation(getInitProjectGitHubMutationOptions(options));
+    }
+
+export const getPushProjectToGitHubUrl = (projectId: string,) => {
+
+
+
+
+  return `/api/projects/${projectId}/github/push`
+}
+
+/**
+ * @summary Push current project files to GitHub
+ */
+export const pushProjectToGitHub = async (projectId: string, options?: RequestInit): Promise<GitHubPushResult> => {
+
+  return customFetch<GitHubPushResult>(getPushProjectToGitHubUrl(projectId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getPushProjectToGitHubMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushProjectToGitHub>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof pushProjectToGitHub>>, TError,{projectId: string}, TContext> => {
+
+const mutationKey = ['pushProjectToGitHub'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof pushProjectToGitHub>>, {projectId: string}> = (props) => {
+          const {projectId} = props ?? {};
+
+          return  pushProjectToGitHub(projectId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PushProjectToGitHubMutationResult = NonNullable<Awaited<ReturnType<typeof pushProjectToGitHub>>>
+
+    export type PushProjectToGitHubMutationError = ErrorType<void>
+
+    /**
+ * @summary Push current project files to GitHub
+ */
+export const usePushProjectToGitHub = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof pushProjectToGitHub>>, TError,{projectId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof pushProjectToGitHub>>,
+        TError,
+        {projectId: string},
+        TContext
+      > => {
+      return useMutation(getPushProjectToGitHubMutationOptions(options));
+    }
 
 export const getListAgentsUrl = () => {
 

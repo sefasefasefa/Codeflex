@@ -6,6 +6,7 @@ import { generateId } from "../lib/id.js";
 import { broadcast } from "../lib/broadcast.js";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
+import * as github from "../lib/github.js";
 
 const router = Router();
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || "/tmp/swarm_workspace";
@@ -320,6 +321,36 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
         message: `Auto-snapshot created after run "${run.projectName}"`,
         entityId: snapId, entityType: "snapshot",
       });
+
+      if (github.isGitHubConfigured()) {
+        const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+        if (proj?.githubRepo) {
+          try {
+            const allFiles = await db.select().from(projectFilesTable)
+              .where(eq(projectFilesTable.projectId, projectId));
+            const latestFiles = new Map<string, typeof allFiles[0]>();
+            for (const f of allFiles) {
+              if (!latestFiles.has(f.path) || latestFiles.get(f.path)!.version < f.version) {
+                latestFiles.set(f.path, f);
+              }
+            }
+            const fileList = Array.from(latestFiles.values()).map(f => ({ path: f.path, content: f.content }));
+            if (fileList.length > 0) {
+              const { sha, commitUrl } = await github.pushFiles(
+                proj.githubRepo,
+                fileList,
+                `Checkpoint: run ${runId.slice(-8)} — ${agentKeys.length} agents, ${totalFilesWritten} files`,
+              );
+              await db.update(projectsTable)
+                .set({ githubSha: sha, githubPushedAt: new Date() })
+                .where(eq(projectsTable.id, projectId));
+              broadcast("github_push", { projectId, sha, commitUrl, filesCount: fileList.length });
+            }
+          } catch (err) {
+            console.error("[github] Auto-push failed:", err);
+          }
+        }
+      }
     }
   }
 }

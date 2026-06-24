@@ -28,7 +28,11 @@ export const ListProjectsResponseItem = zod.object({
   "totalRuns": zod.number(),
   "totalFiles": zod.number(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "githubRepo": zod.string().nullish(),
+  "githubUrl": zod.string().nullish(),
+  "githubSha": zod.string().nullish(),
+  "githubPushedAt": zod.string().nullish()
 })
 export const ListProjectsResponse = zod.array(ListProjectsResponseItem)
 
@@ -60,6 +64,10 @@ export const GetProjectResponse = zod.object({
   "totalFiles": zod.number(),
   "createdAt": zod.string(),
   "updatedAt": zod.string(),
+  "githubRepo": zod.string().nullish(),
+  "githubUrl": zod.string().nullish(),
+  "githubSha": zod.string().nullish(),
+  "githubPushedAt": zod.string().nullish(),
   "memory": zod.object({
   "facts": zod.array(zod.object({
   "key": zod.string(),
@@ -109,7 +117,11 @@ export const UpdateProjectResponse = zod.object({
   "totalRuns": zod.number(),
   "totalFiles": zod.number(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string()
+  "updatedAt": zod.string(),
+  "githubRepo": zod.string().nullish(),
+  "githubUrl": zod.string().nullish(),
+  "githubSha": zod.string().nullish(),
+  "githubPushedAt": zod.string().nullish()
 })
 
 
@@ -199,6 +211,54 @@ export const GetProjectFileResponse = zod.object({
   "createdAt": zod.string()
 })),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Get GitHub repo status for this project
+ */
+export const GetProjectGitHubParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const GetProjectGitHubResponse = zod.object({
+  "connected": zod.boolean(),
+  "repo": zod.string().nullish(),
+  "url": zod.string().nullish(),
+  "cloneUrl": zod.string().nullish(),
+  "sha": zod.string().nullish(),
+  "pushedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Create and link a GitHub repo for this project
+ */
+export const InitProjectGitHubParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const InitProjectGitHubResponse = zod.object({
+  "connected": zod.boolean(),
+  "repo": zod.string().nullish(),
+  "url": zod.string().nullish(),
+  "cloneUrl": zod.string().nullish(),
+  "sha": zod.string().nullish(),
+  "pushedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary Push current project files to GitHub
+ */
+export const PushProjectToGitHubParams = zod.object({
+  "projectId": zod.coerce.string()
+})
+
+export const PushProjectToGitHubResponse = zod.object({
+  "sha": zod.string(),
+  "commitUrl": zod.string(),
+  "filesCount": zod.number()
 })
 
 

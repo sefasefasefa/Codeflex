@@ -17,6 +17,8 @@ export * from './cliHistoryEntry';
 export * from './cliResult';
 export * from './getCliHistoryParams';
 export * from './getWorkspaceFileParams';
+export * from './gitHubPushResult';
+export * from './gitHubStatus';
 export * from './healthStatus';
 export * from './listActivityParams';
 export * from './listRunsParams';

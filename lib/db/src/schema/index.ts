@@ -32,6 +32,10 @@ export const projectsTable = pgTable("projects", {
   totalFiles: integer("total_files").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  githubRepo: text("github_repo"),
+  githubUrl: text("github_url"),
+  githubSha: text("github_sha"),
+  githubPushedAt: timestamp("github_pushed_at"),
 });
 export const insertProjectSchema = createInsertSchema(projectsTable).omit({ createdAt: true, updatedAt: true });
 export type InsertProject = z.infer<typeof insertProjectSchema>;
