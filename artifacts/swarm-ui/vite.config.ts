@@ -61,12 +61,12 @@ export default defineConfig({
         ws: true,
       },
       "/studio": {
-        target: "http://localhost:18425",
+        target: "http://localhost:3001",
         changeOrigin: true,
         ws: true,
       },
       "/cli": {
-        target: "http://localhost:23518",
+        target: "http://localhost:3002",
         changeOrigin: true,
         ws: true,
       },

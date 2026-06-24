@@ -24,6 +24,14 @@ args = "Swarm UI"
 task = "workflow.run"
 args = "API Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Studio"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "CLI Web"
+
 [[workflows.workflow]]
 name = "Swarm UI"
 author = "agent"
@@ -48,6 +56,30 @@ task = "shell.exec"
 args = "PORT=8080 DATABASE_FILE=./data/database.sqlite pnpm --filter @workspace/api-server run dev"
 waitForPort = 8080
 
+[[workflows.workflow]]
+name = "Studio"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3001 pnpm --filter @workspace/studio run dev"
+waitForPort = 3001
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "CLI Web"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3002 pnpm --filter @workspace/cli-web run dev"
+waitForPort = 3002
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
 expertMode = true
@@ -58,3 +90,11 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[[ports]]
+localPort = 3001
+externalPort = 3001
+
+[[ports]]
+localPort = 3002
+externalPort = 3002
