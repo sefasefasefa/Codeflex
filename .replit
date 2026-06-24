@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "Admin Panel"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Server"
+
 [[workflows.workflow]]
 name = "Admin Panel"
 author = "agent"
@@ -31,6 +35,18 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow]]
+name = "API Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/artifacts/api-server && DATABASE_FILE=../../data/database.sqlite PORT=8080 node --enable-source-maps ./dist/index.mjs"
+waitForPort = 8080
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
