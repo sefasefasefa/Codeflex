@@ -2,11 +2,12 @@ import { Link, useLocation } from "wouter";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarProvider, SidebarInset,
+  SidebarProvider, SidebarInset, SidebarTrigger,
 } from "@/components/ui/sidebar";
 import {
   Activity, Cpu, PlayCircle, HardDrive, FolderOpen,
   Layers, Terminal, SquareTerminal, BrainCircuit, MessageSquare, BotMessageSquare,
+  Menu,
 } from "lucide-react";
 import { useGetStats, useListRuns } from "@workspace/api-client-react";
 
@@ -68,8 +69,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </SidebarContent>
         </Sidebar>
-        <SidebarInset className="flex-1 bg-background overflow-hidden flex flex-col">
-          {children}
+
+        <SidebarInset className="flex-1 bg-background flex flex-col min-w-0 overflow-x-hidden">
+          {/* Mobile top bar — hidden on desktop */}
+          <header className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-border bg-background sticky top-0 z-20 shrink-0">
+            <SidebarTrigger className="text-muted-foreground hover:text-foreground">
+              <Menu className="w-5 h-5" />
+            </SidebarTrigger>
+            <Terminal className="w-4 h-4 text-primary" />
+            <span className="font-bold text-sm font-mono text-primary">SWARM_CTRL</span>
+            <span className="ml-auto flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-xs font-mono text-green-400/70">online</span>
+            </span>
+          </header>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
+            {children}
+          </div>
         </SidebarInset>
       </div>
     </SidebarProvider>
