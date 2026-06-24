@@ -20,13 +20,18 @@ router.get("/auth/user", authMiddleware, (req: Request, res: Response) => {
 });
 
 function getPublicBaseUrl(req: Request): string {
+  const fwdHost = req.headers["x-forwarded-host"];
+  const fwdProto = req.headers["x-forwarded-proto"];
+  if (fwdHost) {
+    const host = Array.isArray(fwdHost) ? fwdHost[0] : fwdHost;
+    const proto = Array.isArray(fwdProto) ? fwdProto[0] : (fwdProto ?? "https");
+    return `${proto}://${host}`;
+  }
   const replitDomain = process.env.REPLIT_DOMAINS ?? process.env.REPLIT_DEV_DOMAIN;
   if (replitDomain) {
     return `https://${replitDomain.split(",")[0].trim()}`;
   }
-  const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
-  const host = req.headers["x-forwarded-host"] ?? req.get("host");
-  return `${proto}://${host}`;
+  return `${req.protocol}://${req.get("host")}`;
 }
 
 router.get("/login", async (req: Request, res: Response) => {
