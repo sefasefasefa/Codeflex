@@ -3,7 +3,7 @@ import { Key, Plus, Trash2, Eye, EyeOff, Copy, Check, Settings2, Shield } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@workspace/replit-auth-web";
+import { useUser, useClerk } from "@clerk/react";
 
 interface ApiKey {
   id: string;
@@ -237,29 +237,41 @@ function ApiKeysSection() {
 }
 
 function ProfileSection() {
-  const { user, logout } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const basePath = import.meta.env.BASE_URL.replace(/\/+$/, "");
+
+  const profileImage = user?.imageUrl;
+  const firstName = user?.firstName;
+  const lastName = user?.lastName;
+  const email = user?.primaryEmailAddress?.emailAddress;
 
   return (
     <div className="border border-border bg-card rounded-lg p-4 sm:p-6">
       <h3 className="font-semibold text-base mb-4">Profil</h3>
       <div className="flex items-center gap-4">
-        {user?.profileImageUrl ? (
-          <img src={user.profileImageUrl} alt="Profil" className="w-14 h-14 rounded-full border border-border" />
+        {profileImage ? (
+          <img src={profileImage} alt="Profil" className="w-14 h-14 rounded-full border border-border" />
         ) : (
           <div className="w-14 h-14 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-xl font-bold text-indigo-300">
-            {user?.firstName?.[0]?.toUpperCase() || "K"}
+            {firstName?.[0]?.toUpperCase() || "K"}
           </div>
         )}
         <div className="flex-1 min-w-0">
           <div className="font-medium truncate">
-            {[user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Kullanici"}
+            {[firstName, lastName].filter(Boolean).join(" ") || "Kullanici"}
           </div>
-          <div className="text-sm text-muted-foreground truncate">{user?.email || ""}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Replit ile giris yapildi</div>
+          <div className="text-sm text-muted-foreground truncate">{email || ""}</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Clerk ile giris yapildi</div>
         </div>
       </div>
       <div className="mt-4 pt-4 border-t border-border">
-        <Button variant="outline" size="sm" onClick={logout} className="gap-2 text-muted-foreground hover:text-destructive">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => signOut({ redirectUrl: basePath || "/" })}
+          className="gap-2 text-muted-foreground hover:text-destructive"
+        >
           Cikis Yap
         </Button>
       </div>

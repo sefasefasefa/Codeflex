@@ -1,4 +1,4 @@
-import { useAuth } from "@workspace/replit-auth-web";
+import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Terminal, Zap, Brain, FolderCode, History, Key, ArrowRight, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
 
@@ -125,15 +125,15 @@ function LoginButton({
 }
 
 export default function Landing() {
-  const { login, isLoading, isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [pending, setPending] = useState(false);
 
   const handleLogin = () => {
     setPending(true);
-    login();
+    setLocation("/sign-in");
   };
 
-  const isPending = pending || isLoading;
+  const isPending = pending;
 
   return (
     <div className="min-h-screen bg-[#080b14] text-white overflow-x-hidden">
