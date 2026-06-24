@@ -19,7 +19,13 @@ import Chat from "@/pages/chat";
 import AgentChat from "@/pages/agent-chat";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 2000, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      staleTime: 2000,
+      retry: false,
+      throwOnError: false,
+    },
+  },
 });
 
 function AdminRouter() {

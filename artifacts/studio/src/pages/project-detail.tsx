@@ -274,7 +274,7 @@ function FilesPanel({ projectId, githubUrl }: { projectId: string; githubUrl?: s
     !search || f.path.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selectedFile = files?.find((f) => f.path === selected);
+  const selectedFile = files?.find((f) => f.path === selected) as any;
 
   return (
     <div className="flex flex-col h-full">
