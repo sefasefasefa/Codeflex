@@ -1,6 +1,6 @@
 import { useAuth } from "@workspace/replit-auth-web";
 import { useState, useEffect } from "react";
-import { Terminal, Zap, Brain, FolderCode, History, Key, ArrowRight, ChevronRight } from "lucide-react";
+import { Terminal, Zap, Brain, FolderCode, History, Key, ArrowRight, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
 
 const CLI_LINES = [
   { delay: 0,    text: "$ ais status",                         type: "cmd" },
@@ -66,8 +66,74 @@ function CliDemo() {
   );
 }
 
+function LoginButton({
+  onClick,
+  pending,
+  variant = "primary",
+  children,
+  className = "",
+}: {
+  onClick: () => void;
+  pending: boolean;
+  variant?: "primary" | "small";
+  children: React.ReactNode;
+  className?: string;
+}) {
+  if (variant === "small") {
+    return (
+      <button
+        onClick={onClick}
+        disabled={pending}
+        className={`relative flex items-center justify-center gap-2 px-4 py-1.5 text-sm font-medium rounded-lg transition-all overflow-hidden ${
+          pending
+            ? "bg-indigo-700 cursor-wait"
+            : "bg-indigo-600 hover:bg-indigo-500"
+        } ${className}`}
+      >
+        {pending ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>Giriş yapılıyor...</span>
+          </>
+        ) : (
+          children
+        )}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={pending}
+      className={`relative flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all overflow-hidden shadow-lg shadow-indigo-600/20 ${
+        pending
+          ? "bg-indigo-700 cursor-wait"
+          : "bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98]"
+      } ${className}`}
+    >
+      {pending ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Giriş yapılıyor...</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
+  );
+}
+
 export default function Landing() {
   const { login, isLoading, isAuthenticated } = useAuth();
+  const [pending, setPending] = useState(false);
+
+  const handleLogin = () => {
+    setPending(true);
+    login();
+  };
+
+  const isPending = pending || isLoading;
 
   return (
     <div className="min-h-screen bg-[#080b14] text-white overflow-x-hidden">
@@ -84,16 +150,20 @@ export default function Landing() {
             <a href="#ozellikler" className="hidden sm:block text-sm text-white/50 hover:text-white transition-colors">Ozellikler</a>
             <a href="#cli" className="hidden sm:block text-sm text-white/50 hover:text-white transition-colors">CLI</a>
             <a href="#api" className="hidden sm:block text-sm text-white/50 hover:text-white transition-colors">API</a>
-            <button
-              onClick={login}
-              disabled={isLoading}
-              className="px-4 py-1.5 text-sm font-medium rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
-            >
-              Giris Yap
-            </button>
+            <LoginButton onClick={handleLogin} pending={isPending} variant="small">
+              Giriş Yap
+            </LoginButton>
           </div>
         </div>
       </nav>
+
+      {/* Pending overlay banner */}
+      {isPending && (
+        <div className="fixed top-14 left-0 right-0 z-40 flex items-center justify-center gap-2 py-2 bg-indigo-600/90 backdrop-blur-sm text-sm font-medium text-white animate-in fade-in slide-in-from-top-2 duration-300">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          Replit ile giriş penceresi açılıyor...
+        </div>
+      )}
 
       {/* Hero */}
       <section className="pt-32 pb-20 px-4 sm:px-6 text-center relative overflow-hidden">
@@ -115,14 +185,14 @@ export default function Landing() {
             kendi uygulamalarinizi entegre edin.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <button
-              onClick={login}
-              disabled={isLoading}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 transition-all disabled:opacity-50 text-base shadow-lg shadow-indigo-600/20"
+            <LoginButton
+              onClick={handleLogin}
+              pending={isPending}
+              className="w-full sm:w-auto text-base"
             >
-              Giris Yap — Replit ile
+              Giriş Yap — Replit ile
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </LoginButton>
             <a
               href="#cli"
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold border border-white/10 hover:border-white/20 transition-all text-base text-white/70 hover:text-white"
@@ -218,13 +288,13 @@ export default function Landing() {
             <div className="text-cyan-400">curl -H <span className="text-yellow-300">"Authorization: Bearer sk-..."</span> \</div>
             <div className="text-cyan-400 ml-5">{"https://yourapp.replit.app/api/chat"}</div>
           </div>
-          <button
-            onClick={login}
-            disabled={isLoading}
-            className="px-8 py-3 rounded-xl font-semibold bg-indigo-600 hover:bg-indigo-500 transition-all disabled:opacity-50 shadow-lg shadow-indigo-600/20"
+          <LoginButton
+            onClick={handleLogin}
+            pending={isPending}
+            className="px-8 py-3"
           >
-            Giris Yap ve Anahtar Al
-          </button>
+            Giriş Yap ve Anahtar Al
+          </LoginButton>
         </div>
       </section>
 
