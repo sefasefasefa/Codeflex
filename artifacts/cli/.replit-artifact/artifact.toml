@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/cli/"
+title = "CLI"
+version = "1.0.0"
+id = "artifacts/cli"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/cli/" ]
+localPort = 23518
+
+[services.development]
+run = "pnpm --filter @workspace/cli-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cli-web", "run", "build" ]
+publicDir = "artifacts/cli/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23518"
+BASE_PATH = "/cli/"

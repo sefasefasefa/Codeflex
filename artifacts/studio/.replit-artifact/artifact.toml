@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/studio/"
-title = "AI Studio"
+title = "Agent"
 version = "1.0.0"
 id = "artifacts/studio"
 router = "path"
