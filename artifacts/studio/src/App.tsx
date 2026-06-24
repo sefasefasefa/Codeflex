@@ -131,14 +131,14 @@ function AppContent() {
     <>
       <Switch>
         <Route path="/">
-          <Redirect to="/chat" />
+          <Redirect to="/projects" />
         </Route>
 
         <Route path="/sign-in/*?">
-          {isSignedIn ? <Redirect to="/chat" /> : <Chat />}
+          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
         </Route>
         <Route path="/sign-up/*?">
-          {isSignedIn ? <Redirect to="/chat" /> : <Chat />}
+          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
         </Route>
 
         <Route path="/chat">
@@ -149,7 +149,7 @@ function AppContent() {
         </Route>
 
         <Route path="/projects">
-          <Layout><Projects /></Layout>
+          <Projects />
         </Route>
 
         <Route path="/projects/:id">
