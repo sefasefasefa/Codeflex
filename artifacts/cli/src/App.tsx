@@ -71,7 +71,7 @@ function AppNav() {
   return (
     <div className="flex items-center gap-3 px-4 py-1.5 bg-[#080808] border-b border-green-900/20 text-[11px] font-mono text-green-800">
       <span className="text-green-600/60">apps:</span>
-      <a href="/" className="hover:text-green-400 transition-colors">swarm-ui</a>
+      <a href="/" className="hover:text-green-400 transition-colors">admin-panel</a>
       <span className="text-green-900">·</span>
       <a href="/studio/" className="hover:text-green-400 transition-colors">studio</a>
       <span className="text-green-900">·</span>

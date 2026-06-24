@@ -4,9 +4,9 @@ An AI Swarm orchestration and development platform for managing projects, agents
 
 ## Run & Operate
 
-- **Run Button** starts both services in parallel (API Server + Swarm UI)
+- **Run Button** starts both services in parallel (API Server + Admin Panel)
 - `pnpm --filter @workspace/api-server run dev` — build & run the API server (port 8080)
-- `pnpm --filter @workspace/swarm-ui run dev` — run the Swarm UI frontend (port 5000)
+- `pnpm --filter @workspace/admin-panel run dev` — run the Admin Panel frontend (port 5000)
 - `pnpm --filter @workspace/studio run dev` — run the AI Studio frontend (port 3001)
 - `pnpm --filter @workspace/cli-web run dev` — run the CLI web frontend (port 3002)
 - `pnpm run typecheck` — full typecheck across all packages
@@ -28,7 +28,7 @@ An AI Swarm orchestration and development platform for managing projects, agents
 ## Where things live
 
 - `artifacts/api-server/` — Express backend, auth (OIDC), all API routes
-- `artifacts/swarm-ui/` — Admin dashboard (main webview on port 5000)
+- `artifacts/admin-panel/` — Admin dashboard (main webview on port 5000)
 - `artifacts/studio/` — AI Studio frontend (port 3001, base path `/studio/`)
 - `artifacts/cli/` — Web CLI terminal frontend (port 3002)
 - `lib/db/` — Drizzle ORM schema and DB client (`src/schema/`)
@@ -41,7 +41,7 @@ An AI Swarm orchestration and development platform for managing projects, agents
 ## Architecture decisions
 
 - Auth is Replit OIDC — sessions are cookie-based (`sid` cookie), stored in SQLite `sessions` table
-- The Swarm UI proxies `/api` requests to the API server at `localhost:8080`
+- The Admin Panel proxies `/api` requests to the API server at `localhost:8080`
 - AI model providers (OpenAI, Anthropic, Gemini, Groq, etc.) are configured via API keys stored in the DB `model_configs` table — users add their own keys through the Settings UI
 - The API server bundles to a single ESM file with esbuild; `better-sqlite3` is external (native addon)
 - All frontends share workspace packages via pnpm workspace links
