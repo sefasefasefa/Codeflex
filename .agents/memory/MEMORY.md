@@ -1,0 +1,1 @@
+- [Dynamic Scheduler](dynamic-scheduler.md) — Semaphore+resource-monitor for true parallel subagent execution; capacity auto-scales with RAM/CPU

@@ -5,7 +5,7 @@ import {
   useCreateRun, useUpdateProjectMemory, useListAgents,
   getGetProjectQueryKey, getListProjectFilesQueryKey, getListRunsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Brain, FileCode2, Play, Plus, ChevronRight, Clock, Cpu,
@@ -19,6 +19,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatRelative } from "@/lib/utils";
+
+interface CapacitySnapshot {
+  maxConcurrent: number;
+  currentlyRunning: number;
+  queued: number;
+  freeRamMB: number;
+  totalRamMB: number;
+  ramUsedPercent: number;
+  cpuLoadPercent: number;
+}
+
+function useCapacity() {
+  return useQuery<CapacitySnapshot>({
+    queryKey: ["capacity"],
+    queryFn: async () => {
+      const r = await fetch("/api/capacity");
+      if (!r.ok) throw new Error("capacity fetch failed");
+      return r.json();
+    },
+    refetchInterval: 8000,
+  });
+}
 
 const STATUS_COLORS: Record<string, string> = {
   initialized: "text-cyan-400 bg-cyan-400/10 border-cyan-400/30",
@@ -129,6 +151,7 @@ export default function ProjectDetail() {
   const { mutateAsync: createRun } = useCreateRun();
   const { mutateAsync: updateMemory } = useUpdateProjectMemory();
   const { data: agents = [] } = useListAgents();
+  const { data: cap } = useCapacity();
 
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
@@ -426,8 +449,28 @@ export default function ProjectDetail() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-mono text-muted-foreground">PARALLEL: {runForm.parallelCount}</Label>
-              <input type="range" min={1} max={Math.min(500, agents.length || 10)} value={runForm.parallelCount} onChange={e => setRunForm(f => ({ ...f, parallelCount: Number(e.target.value) }))} className="w-full accent-cyan-400" />
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-mono text-muted-foreground">PARALLEL: {runForm.parallelCount}</Label>
+                {cap && (
+                  <span className="text-xs font-mono text-cyan-400/70">
+                    system max: {cap.maxConcurrent.toLocaleString()} · {cap.freeRamMB.toLocaleString()}MB free
+                  </span>
+                )}
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={cap ? Math.min(cap.maxConcurrent, 10_000) : 500}
+                value={runForm.parallelCount}
+                onChange={e => setRunForm(f => ({ ...f, parallelCount: Number(e.target.value) }))}
+                className="w-full accent-cyan-400"
+              />
+              <div className="flex justify-between text-xs font-mono text-muted-foreground">
+                <span>1</span>
+                <span>{cap ? (cap.maxConcurrent / 4).toFixed(0) : 125}</span>
+                <span>{cap ? (cap.maxConcurrent / 2).toFixed(0) : 250}</span>
+                <span>{cap ? cap.maxConcurrent.toLocaleString() : "500"}</span>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { agentsTable, runsTable, runLogsTable, snapshotsTable, activityTable, projectsTable, projectFilesTable } from "@workspace/db";
 import { desc, sql } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
+import { getCapacitySnapshot } from "../lib/scheduler.js";
 
 const router = Router();
 
@@ -27,6 +28,10 @@ router.get("/stats", async (_req, res) => {
     totalFiles: fileCount?.count ?? 0,
     recentThroughput: completedRuns + activeRuns * 0.5,
   });
+});
+
+router.get("/capacity", (_req, res) => {
+  res.json(getCapacitySnapshot());
 });
 
 router.get("/activity", async (req, res) => {

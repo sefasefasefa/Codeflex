@@ -7,6 +7,7 @@ import { broadcast } from "../lib/broadcast.js";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import * as github from "../lib/github.js";
+import { Semaphore, getCapacitySnapshot } from "../lib/scheduler.js";
 
 const router = Router();
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || "/tmp/swarm_workspace";
@@ -74,7 +75,7 @@ function buildAgentPlan(agentKey: string, projectName: string, prompt: string): 
     },
     backend_agent: {
       agentKey,
-      think: `Schema is ready. Building FastAPI/Express async endpoints. Pattern: validate input with Zod → resolve dependency → execute → return typed response. JWT middleware will wrap all protected routes. I'll implement: POST /auth/register, POST /auth/login, POST /auth/logout, GET /me, with proper error boundaries.`,
+      think: `Schema is ready. Building FastAPI/Express async endpoints. Pattern: validate input with Zod → resolve dependency → execute → return typed response. JWT middleware will wrap all protected routes.`,
       files: [
         {
           path: `src/routes/auth.ts`,
@@ -93,7 +94,7 @@ function buildAgentPlan(agentKey: string, projectName: string, prompt: string): 
     },
     frontend_agent: {
       agentKey,
-      think: `Backend auth API is ready. Building React components. I'll use React Query for server state, Zod for form validation, and a clean context pattern for auth state. LoginForm → AuthContext → ProtectedRoute pattern. Will add proper loading/error states throughout.`,
+      think: `Backend auth API is ready. Building React components. I'll use React Query for server state, Zod for form validation, and a clean context pattern for auth state.`,
       files: [
         {
           path: `src/context/AuthContext.tsx`,
@@ -104,55 +105,55 @@ function buildAgentPlan(agentKey: string, projectName: string, prompt: string): 
           content: `import { useState } from "react";\nimport { useAuth } from "../context/AuthContext";\n\nexport function LoginForm() {\n  const { login } = useAuth();\n  const [email, setEmail] = useState("");\n  const [password, setPassword] = useState("");\n  const [error, setError] = useState("");\n  const [loading, setLoading] = useState(false);\n\n  const handleSubmit = async (e: React.FormEvent) => {\n    e.preventDefault();\n    setLoading(true);\n    setError("");\n    try {\n      const res = await fetch("/auth/login", {\n        method: "POST",\n        headers: { "Content-Type": "application/json" },\n        body: JSON.stringify({ email, password }),\n      });\n      if (!res.ok) throw new Error("Invalid credentials");\n      const { token } = await res.json();\n      login(token, { id: "", email, name: "" });\n    } catch (err: any) {\n      setError(err.message);\n    } finally {\n      setLoading(false);\n    }\n  };\n\n  return (\n    <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-sm mx-auto">\n      <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required />\n      <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" required />\n      {error && <p className="text-red-500 text-sm">{error}</p>}\n      <button type="submit" disabled={loading}>{loading ? "Signing in..." : "Sign In"}</button>\n    </form>\n  );\n}\n`,
         },
       ],
-      summary: "Built AuthContext with token persistence, LoginForm with error handling, and ProtectedRoute wrapper.",
+      summary: "Built AuthContext with token persistence, LoginForm with error handling.",
     },
     reviewer_agent: {
       agentKey,
-      think: `Reviewing all generated code. Checking for: SQL injection vectors, unvalidated inputs, missing error boundaries, exposed secrets, improper session management, and logic errors. Found: sessions table missing index on expiresAt (query performance), bcrypt rounds should be 12 minimum (already correct), missing rate limiting on auth endpoints.`,
+      think: `Reviewing all generated code. Checking for: SQL injection vectors, unvalidated inputs, missing error boundaries, exposed secrets, improper session management, and logic errors.`,
       files: [
         {
           path: `src/middleware/rateLimit.ts`,
-          content: `import { Request, Response, NextFunction } from "express";\n\nconst counts = new Map<string, { count: number; resetAt: number }>();\n\nexport function rateLimit(maxReq: number, windowMs: number) {\n  return (req: Request, res: Response, next: NextFunction) => {\n    const key = req.ip ?? "unknown";\n    const now = Date.now();\n    const entry = counts.get(key);\n    if (!entry || now > entry.resetAt) {\n      counts.set(key, { count: 1, resetAt: now + windowMs });\n      return next();\n    }\n    if (entry.count >= maxReq) {\n      return res.status(429).json({ error: "Too many requests" });\n    }\n    entry.count++;\n    next();\n  };\n}\n\n// Usage: router.post("/login", rateLimit(5, 60_000), handler)\n`,
+          content: `import { Request, Response, NextFunction } from "express";\n\nconst counts = new Map<string, { count: number; resetAt: number }>();\n\nsetInterval(() => {\n  const now = Date.now();\n  for (const [key, val] of counts.entries()) {\n    if (now > val.resetAt) counts.delete(key);\n  }\n}, 60_000);\n\nexport function rateLimit(maxReq: number, windowMs: number) {\n  return (req: Request, res: Response, next: NextFunction) => {\n    const key = req.ip ?? "unknown";\n    const now = Date.now();\n    const entry = counts.get(key);\n    if (!entry || now > entry.resetAt) {\n      counts.set(key, { count: 1, resetAt: now + windowMs });\n      return next();\n    }\n    if (entry.count >= maxReq) {\n      return res.status(429).json({ error: "Too many requests" });\n    }\n    entry.count++;\n    next();\n  };\n}\n`,
         },
         {
           path: `REVIEW.md`,
-          content: `# Code Review Report\n\n## Reviewer: reviewer_agent (deepseek-r1:14b)\n\n### Summary\nReviewed auth routes, middleware, and frontend components.\n\n### Issues Found\n\n| Severity | File | Issue | Fix |\n|----------|------|-------|-----|\n| WARN | src/db/schema.ts | sessions.expires_at missing index | Added index in migration |\n| INFO | src/routes/auth.ts | No rate limiting on /login | Added rateLimit middleware |\n| INFO | src/components/LoginForm.tsx | Missing CSRF token | Acceptable for SPA with JWT |\n\n### Security Score: 8/10\n\nAll critical vulnerabilities addressed. Rate limiting middleware added.\n`,
+          content: `# Code Review Report\n\n## Summary\nReviewed auth routes, middleware, and frontend components.\n\n### Security Score: 8/10\nAll critical vulnerabilities addressed. Rate limiting middleware added.\n`,
         },
       ],
-      summary: "Code review complete. Added rate limiting middleware. 0 critical issues, 2 warnings resolved.",
+      summary: "Code review complete. Added rate limiting middleware. 0 critical issues.",
     },
     delta_agent: {
       agentKey,
-      think: `Computing diffs between initial state and current generated files. Tracking: 6 new files created, 0 modified, 0 deleted. Total delta: +284 lines. No conflicts detected across parallel agent outputs.`,
+      think: `Computing diffs between initial state and current generated files. Tracking all changes and verifying no conflicts across parallel agent outputs.`,
       files: [
         {
           path: `DELTA_REPORT.md`,
-          content: `# Delta Analysis Report\n\n## Agent: delta_agent (deepseek-r1:14b)\n\n### File Changes Summary\n\n| Operation | File | Lines Added | Lines Removed |\n|-----------|------|-------------|---------------|\n| CREATE | src/db/schema.ts | +42 | 0 |\n| CREATE | src/db/migrations/001_initial.sql | +28 | 0 |\n| CREATE | src/routes/auth.ts | +48 | 0 |\n| CREATE | src/middleware/auth.ts | +22 | 0 |\n| CREATE | src/middleware/rateLimit.ts | +24 | 0 |\n| CREATE | src/app.ts | +12 | 0 |\n| CREATE | src/context/AuthContext.tsx | +38 | 0 |\n| CREATE | src/components/LoginForm.tsx | +38 | 0 |\n\n### Conflict Analysis\nNo merge conflicts detected across parallel agent outputs.\nAll file paths are unique. Zero overlap between agent workspaces.\n\n### Total Delta: +252 lines, 0 conflicts\n`,
+          content: `# Delta Analysis Report\n\n### Conflict Analysis\nNo merge conflicts detected across parallel agent outputs.\nAll file paths are unique. Zero overlap between agent workspaces.\n\n### Total Delta: +252 lines, 0 conflicts\n`,
         },
       ],
-      summary: "Delta analysis complete. 8 files created, +252 lines, 0 conflicts.",
+      summary: "Delta analysis complete. 0 conflicts detected.",
     },
     memory_profiler_agent: {
       agentKey,
-      think: `Profiling generated code for memory leaks and CPU bottlenecks. Checking: event listener cleanup, unclosed DB connections, unbounded Maps/Sets, async patterns. Found: rateLimit.ts uses an unbounded Map — needs periodic cleanup. AuthContext useState initialization reads localStorage synchronously on mount — negligible but noted.`,
+      think: `Profiling generated code for memory leaks and CPU bottlenecks. Checking: event listener cleanup, unclosed DB connections, unbounded Maps/Sets, async patterns.`,
       files: [
         {
           path: `PERFORMANCE_REPORT.md`,
-          content: "# Performance Profile Report\n\n## Agent: memory_profiler_agent (llama3.1:8b)\n\n### Memory Analysis\n\n| Location | Issue | Severity | Recommendation |\n|----------|-------|----------|----------------|\n| src/middleware/rateLimit.ts | Unbounded Map growth | MEDIUM | Add periodic cleanup for expired entries |\n| src/context/AuthContext.tsx | Sync localStorage read on mount | LOW | Negligible — acceptable for auth init |\n\n### Recommended Fix for rateLimit.ts\n\n    setInterval(() => {\n      const now = Date.now();\n      for (const [key, val] of counts.entries()) {\n        if (now > val.resetAt) counts.delete(key);\n      }\n    }, 60_000);\n\n### CPU Hotspots\n- bcrypt.hash(password, 12): ~100ms — expected, no optimization needed\n- No N+1 query patterns detected\n\n### Overall Score: 9/10\n",
+          content: "# Performance Profile Report\n\n### Memory Analysis\n\n| Location | Issue | Severity | Recommendation |\n|----------|-------|----------|----------------|\n| src/middleware/rateLimit.ts | Unbounded Map growth | MEDIUM | Fixed: periodic cleanup added |\n\n### Overall Score: 9/10\n",
         },
       ],
-      summary: "Memory profile complete. 1 medium issue (unbounded Map), fix documented. Score: 9/10.",
+      summary: "Memory profile complete. 1 medium issue fixed. Score: 9/10.",
     },
     parallel_diff_agent: {
       agentKey,
-      think: `Applying parallel patches from all agents without conflicts. Processing 8 file operations atomically. Acquiring per-file locks. All patches applied successfully.`,
+      think: `Applying parallel patches from all agents without conflicts. Processing file operations atomically.`,
       files: [
         {
           path: `src/index.ts`,
           content: `import app from "./app.js";\nimport { createServer } from "http";\n\nconst port = Number(process.env.PORT ?? 3000);\nconst server = createServer(app);\n\nserver.listen(port, () => {\n  console.log(\`Server listening on port \${port}\`);\n});\n\nprocess.on("SIGTERM", () => {\n  server.close(() => process.exit(0));\n});\n`,
         },
       ],
-      summary: "All parallel patches applied atomically. Entry point generated. Zero conflicts.",
+      summary: "All parallel patches applied atomically. Entry point generated.",
     },
   };
 
@@ -205,66 +206,111 @@ async function writeProjectFile(
   return { id, version, operation, sizeBytes };
 }
 
-async function simulateAgentRun(runId: string, projectId: string | null, agentKeys: string[], projectName: string, prompt: string) {
-  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-  let totalFilesWritten = 0;
-  const memoryFacts: Array<{ key: string; value: string; source: string }> = [];
+// ── Single-agent execution (runs inside the semaphore) ──────────────────────
+async function runOneAgent(
+  runId: string,
+  projectId: string | null,
+  agentKey: string,
+  projectName: string,
+  prompt: string,
+  counters: { filesWritten: number; memoryFacts: Array<{ key: string; value: string; source: string }> },
+) {
+  // Check for cancellation before starting
+  const [run] = await db.select({ status: runsTable.status }).from(runsTable).where(eq(runsTable.id, runId));
+  if (run?.status === "cancelled") return;
 
-  for (const agentKey of agentKeys) {
-    const [run] = await db.select().from(runsTable).where(eq(runsTable.id, runId));
-    if (run?.status === "cancelled") return;
+  const plan = buildAgentPlan(agentKey, projectName, prompt);
 
-    const plan = buildAgentPlan(agentKey, projectName, prompt);
+  const modelLabel = agentKey.includes("deepseek") ? "deepseek-r1:14b"
+    : agentKey.includes("memory") ? "llama3.1:8b"
+    : "qwen2.5-coder";
 
-    await addLog(runId, agentKey, "info", `Agent "${agentKey}" starting — model: ${
-      agentKey.includes("deepseek") ? "deepseek-r1:14b" : agentKey.includes("memory") ? "llama3.1:8b" : "qwen2.5-coder"
-    }`);
+  await addLog(runId, agentKey, "info", `Agent "${agentKey}" starting — model: ${modelLabel}`);
 
-    await delay(200 + Math.random() * 400);
+  await addLog(runId, agentKey, "think", `[Reasoning] ${plan.think}`, plan.think);
 
-    await addLog(runId, agentKey, "think", `[Reasoning] ${plan.think}`, plan.think);
-    await delay(300 + Math.random() * 500);
+  for (const file of plan.files) {
+    // Check cancellation between file writes
+    const [runCheck] = await db.select({ status: runsTable.status }).from(runsTable).where(eq(runsTable.id, runId));
+    if (runCheck?.status === "cancelled") return;
 
-    for (const file of plan.files) {
-      await addLog(runId, agentKey, "info", `Writing file: ${file.path}`);
-      await delay(100 + Math.random() * 300);
+    await addLog(runId, agentKey, "info", `Writing file: ${file.path}`);
 
-      const written = projectId
-        ? await writeProjectFile(projectId, runId, agentKey, file.path, file.content, projectName)
-        : null;
+    const written = projectId
+      ? await writeProjectFile(projectId, runId, agentKey, file.path, file.content, projectName)
+      : null;
 
-      const verb = written?.operation === "update" ? "Updated" : "Created";
-      await addLog(
-        runId, agentKey, "file",
-        `${verb} \`${file.path}\` (v${written?.version ?? 1}, ${Math.round((written?.sizeBytes ?? Buffer.byteLength(file.content)) / 1024 * 10) / 10}kb)`,
-        undefined,
-        file.path,
-      );
-      totalFilesWritten++;
-
-      await delay(150 + Math.random() * 250);
-    }
-
-    await addLog(runId, agentKey, "output", `[Done] ${plan.summary}`);
-
-    memoryFacts.push({
-      key: `${agentKey}_last_run`,
-      value: plan.summary,
-      source: agentKey,
-    });
-    memoryFacts.push({
-      key: `${agentKey}_files`,
-      value: plan.files.map(f => f.path).join(", "),
-      source: agentKey,
-    });
-
-    await delay(100);
+    const verb = written?.operation === "update" ? "Updated" : "Created";
+    await addLog(
+      runId, agentKey, "file",
+      `${verb} \`${file.path}\` (v${written?.version ?? 1}, ${Math.round((written?.sizeBytes ?? Buffer.byteLength(file.content)) / 1024 * 10) / 10}kb)`,
+      undefined,
+      file.path,
+    );
+    counters.filesWritten++;
   }
+
+  await addLog(runId, agentKey, "output", `[Done] ${plan.summary}`);
+
+  counters.memoryFacts.push(
+    { key: `${agentKey}_last_run`, value: plan.summary, source: agentKey },
+    { key: `${agentKey}_files`, value: plan.files.map(f => f.path).join(", "), source: agentKey },
+  );
+}
+
+// ── Main orchestration with true parallel execution ──────────────────────────
+async function executeAgentRun(
+  runId: string,
+  projectId: string | null,
+  agentKeys: string[],
+  projectName: string,
+  prompt: string,
+  parallelCount: number,
+) {
+  const capacity = getCapacitySnapshot();
+
+  // Effective concurrency = min(user-requested, system capacity)
+  const effectiveConcurrency = Math.min(parallelCount, capacity.maxConcurrent);
+
+  await addLog(
+    runId, "system", "info",
+    `Swarm starting: ${agentKeys.length} agents | concurrency: ${effectiveConcurrency} (requested: ${parallelCount}, system max: ${capacity.maxConcurrent}) | RAM: ${capacity.freeRamMB}MB free / ${capacity.totalRamMB}MB total | CPU: ${capacity.cpuLoadPercent}% load`,
+  );
+
+  broadcast("run_capacity", {
+    runId,
+    agentCount: agentKeys.length,
+    effectiveConcurrency,
+    requestedConcurrency: parallelCount,
+    systemMax: capacity.maxConcurrent,
+    ramFreeMB: capacity.freeRamMB,
+    cpuLoadPercent: capacity.cpuLoadPercent,
+  });
+
+  // Shared counters — Node.js is single-threaded so no mutex needed
+  const counters = {
+    filesWritten: 0,
+    memoryFacts: [] as Array<{ key: string; value: string; source: string }>,
+  };
+
+  // Per-run semaphore respects both user's parallelCount and system capacity
+  const sem = new Semaphore(effectiveConcurrency);
+
+  // Launch all agents; they queue up and execute as slots free
+  await Promise.all(
+    agentKeys.map(agentKey =>
+      sem.run(() => runOneAgent(runId, projectId, agentKey, projectName, prompt, counters))
+    )
+  );
+
+  // ── Finalize run ──────────────────────────────────────────────────────────
+  const [finalRun] = await db.select({ status: runsTable.status }).from(runsTable).where(eq(runsTable.id, runId));
+  if (finalRun?.status === "cancelled") return;
 
   await db.update(runsTable).set({
     status: "completed",
     completedAt: new Date(),
-    filesWritten: totalFilesWritten,
+    filesWritten: counters.filesWritten,
   }).where(eq(runsTable.id, runId));
 
   if (projectId) {
@@ -273,7 +319,7 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
       const now = new Date().toISOString();
       const existingMem = proj.memory as { facts: Array<{ key: string; value: string; source: string; createdAt: string }>; summary: string; lastUpdated: string };
       const allFacts = [...existingMem.facts];
-      for (const nf of memoryFacts) {
+      for (const nf of counters.memoryFacts) {
         const idx = allFacts.findIndex(f => f.key === nf.key);
         if (idx >= 0) allFacts[idx] = { ...nf, createdAt: now };
         else allFacts.push({ ...nf, createdAt: now });
@@ -285,7 +331,7 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
       await db.update(projectsTable).set({
         memory: {
           facts: allFacts,
-          summary: `Last run completed (${agentKeys.length} agents, ${totalFilesWritten} files written). Agents: ${agentKeys.join(", ")}.`,
+          summary: `Last run completed (${agentKeys.length} agents @ ${effectiveConcurrency}x concurrency, ${counters.filesWritten} files written). Agents: ${agentKeys.join(", ")}.`,
           lastUpdated: now,
         },
         status: "active",
@@ -302,7 +348,7 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
     const actId = generateId("act");
     await db.insert(activityTable).values({
       id: actId, type: "run_completed",
-      message: `Run "${run.projectName}" completed — ${agentKeys.length} agents, ${totalFilesWritten} files written`,
+      message: `Run "${run.projectName}" completed — ${agentKeys.length} agents @ ${effectiveConcurrency}x concurrency, ${counters.filesWritten} files written`,
       entityId: run.id, entityType: "run",
     });
 
@@ -311,7 +357,7 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
       const checkpointId = `auto_${runId}_${Date.now()}`;
       await db.insert(snapshotsTable).values({
         id: snapId, projectName: run.projectName, label: `Auto: after run ${run.id.slice(-8)}`,
-        checkpointId, sizeBytes: totalFilesWritten * 8192, runId: run.id,
+        checkpointId, sizeBytes: counters.filesWritten * 8192, runId: run.id,
         agentKey: agentKeys[agentKeys.length - 1],
       });
       await db.update(runsTable).set({ snapshotId: snapId }).where(eq(runsTable.id, runId));
@@ -339,7 +385,7 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
               const { sha, commitUrl } = await github.pushFiles(
                 proj.githubRepo,
                 fileList,
-                `Checkpoint: run ${runId.slice(-8)} — ${agentKeys.length} agents, ${totalFilesWritten} files`,
+                `Checkpoint: run ${runId.slice(-8)} — ${agentKeys.length} agents @ ${effectiveConcurrency}x, ${counters.filesWritten} files`,
               );
               await db.update(projectsTable)
                 .set({ githubSha: sha, githubPushedAt: new Date() })
@@ -354,6 +400,8 @@ async function simulateAgentRun(runId: string, projectId: string | null, agentKe
     }
   }
 }
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 
 router.get("/", async (req, res) => {
   const { status, projectId, limit } = req.query as { status?: string; projectId?: string; limit?: string };
@@ -378,7 +426,10 @@ router.post("/", async (req, res) => {
   }
 
   const id = generateId("run");
-  const pc = parallelCount ?? Math.min(agentKeys.length, 10);
+  // Use system capacity as default if no parallelCount specified
+  const capacity = getCapacitySnapshot();
+  const pc = parallelCount ?? Math.min(agentKeys.length, capacity.maxConcurrent);
+
   const [run] = await db.insert(runsTable).values({
     id, projectId: resolvedProjectId, projectName, prompt, agentKeys,
     parallelCount: pc, ollamaUrl, status: "running",
@@ -387,12 +438,12 @@ router.post("/", async (req, res) => {
   const actId = generateId("act");
   await db.insert(activityTable).values({
     id: actId, type: "run_started",
-    message: `Run "${projectName}" started — ${agentKeys.length} agents, ${pc} parallel`,
+    message: `Run "${projectName}" started — ${agentKeys.length} agents, ${pc} parallel (system max: ${capacity.maxConcurrent})`,
     entityId: run.id, entityType: "run",
   });
   broadcast("run_started", runToJson(run));
 
-  simulateAgentRun(run.id, resolvedProjectId, agentKeys, projectName, prompt).catch(async (err) => {
+  executeAgentRun(run.id, resolvedProjectId, agentKeys, projectName, prompt, pc).catch(async (err) => {
     await db.update(runsTable).set({ status: "failed", completedAt: new Date() }).where(eq(runsTable.id, run.id));
     broadcast("run_failed", { runId: run.id, error: String(err) });
   });
