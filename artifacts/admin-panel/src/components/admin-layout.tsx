@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import {
-  BrainCircuit, Cpu, HardDrive, FolderOpen,
+  BrainCircuit,
   ArrowLeft, ShieldCheck, Settings2, Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,10 +8,7 @@ import { cn } from "@/lib/utils";
 type NavItem = { label: string; href: string; icon: React.ElementType; desc: string };
 
 const adminNav: NavItem[] = [
-  { label: "Providers",  href: "/providers",  icon: BrainCircuit, desc: "LLM API anahtarları & modeller" },
-  { label: "Agents",     href: "/agents",     icon: Cpu,          desc: "Ajan kayıt & konfigürasyon" },
-  { label: "Snapshots",  href: "/snapshots",  icon: HardDrive,    desc: "Proje yedekleri" },
-  { label: "Workspace",  href: "/workspace",  icon: FolderOpen,   desc: "Dosya yöneticisi" },
+  { label: "Providers", href: "/providers", icon: BrainCircuit, desc: "LLM API anahtarları & modeller" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -20,15 +17,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground w-full">
-      {/* Admin Sidebar */}
       <aside className="w-64 shrink-0 border-r border-border flex flex-col bg-[#0a0a0a]">
-        {/* Header */}
         <div className="h-14 flex items-center gap-2.5 px-4 border-b border-border">
           <ShieldCheck className="w-5 h-5 text-amber-400" />
           <span className="font-bold text-sm font-mono text-amber-400 tracking-wider">ADMIN PANEL</span>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 py-3 px-2 space-y-0.5">
           {adminNav.map((item) => {
             const active = isActive(item.href);
@@ -53,7 +47,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Back to app */}
         <div className="p-3 border-t border-border">
           <Link
             href="/"
@@ -65,9 +58,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-auto min-w-0">
-        {/* Admin top bar */}
         <div className="h-14 border-b border-border flex items-center px-6 gap-3 sticky top-0 bg-background/95 backdrop-blur z-10">
           <Terminal className="w-4 h-4 text-primary" />
           <span className="text-sm font-mono text-muted-foreground">Admin Panel</span>

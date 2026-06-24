@@ -10,14 +10,8 @@ import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Chat from "@/pages/chat";
-import AgentChat from "@/pages/agent-chat";
-import Runs from "@/pages/runs";
-import RunDetail from "@/pages/run-detail";
 import Terminal from "@/pages/terminal";
 import Models from "@/pages/models";
-import Agents from "@/pages/agents";
-import Snapshots from "@/pages/snapshots";
-import Workspace from "@/pages/workspace";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -77,15 +71,6 @@ function AppContent() {
         <Route path="/admin/providers">
           <AdminLayout><Models /></AdminLayout>
         </Route>
-        <Route path="/admin/agents">
-          <AdminLayout><Agents /></AdminLayout>
-        </Route>
-        <Route path="/admin/snapshots">
-          <AdminLayout><Snapshots /></AdminLayout>
-        </Route>
-        <Route path="/admin/workspace">
-          <AdminLayout><Workspace /></AdminLayout>
-        </Route>
 
         {/* Main app routes */}
         <Route path="/">
@@ -99,15 +84,6 @@ function AppContent() {
         </Route>
         <Route path="/chat">
           <AppLayout><Chat /></AppLayout>
-        </Route>
-        <Route path="/agent-chat">
-          <AppLayout><AgentChat /></AppLayout>
-        </Route>
-        <Route path="/runs">
-          <AppLayout><Runs /></AppLayout>
-        </Route>
-        <Route path="/runs/:id">
-          <AppLayout><RunDetail /></AppLayout>
         </Route>
         <Route path="/terminal">
           <AppLayout><Terminal /></AppLayout>

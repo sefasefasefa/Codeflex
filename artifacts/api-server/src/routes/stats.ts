@@ -1,37 +1,19 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { agentsTable, runsTable, runLogsTable, snapshotsTable, activityTable, projectsTable, projectFilesTable } from "@workspace/db";
+import { activityTable, projectsTable, projectFilesTable, conversationsTable } from "@workspace/db";
 import { desc, sql } from "drizzle-orm";
-import { generateId } from "../lib/id.js";
-import { getCapacitySnapshot } from "../lib/scheduler.js";
 
 const router = Router();
 
 router.get("/stats", async (_req, res) => {
-  const [agentCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(agentsTable);
   const [projCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(projectsTable);
-  const allRuns = await db.select({ status: runsTable.status }).from(runsTable);
-  const activeRuns = allRuns.filter(r => r.status === "running").length;
-  const completedRuns = allRuns.filter(r => r.status === "completed").length;
-  const failedRuns = allRuns.filter(r => r.status === "failed").length;
-  const [snapCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(snapshotsTable);
-  const [logCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(runLogsTable);
   const [fileCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(projectFilesTable);
+  const [convCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(conversationsTable);
   res.json({
-    totalAgents: agentCount?.count ?? 0,
     totalProjects: projCount?.count ?? 0,
-    activeRuns,
-    completedRuns,
-    failedRuns,
-    totalSnapshots: snapCount?.count ?? 0,
-    totalLogs: logCount?.count ?? 0,
     totalFiles: fileCount?.count ?? 0,
-    recentThroughput: completedRuns + activeRuns * 0.5,
+    totalConversations: convCount?.count ?? 0,
   });
-});
-
-router.get("/capacity", (_req, res) => {
-  res.json(getCapacitySnapshot());
 });
 
 router.get("/activity", async (req, res) => {

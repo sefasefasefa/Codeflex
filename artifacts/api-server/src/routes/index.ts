@@ -5,10 +5,6 @@ import { load as yamlLoad } from "js-yaml";
 import { fileURLToPath } from "url";
 import { join, dirname } from "path";
 import healthRouter from "./health.js";
-import agentsRouter from "./agents.js";
-import runsRouter from "./runs.js";
-import snapshotsRouter from "./snapshots.js";
-import workspaceRouter from "./workspace.js";
 import statsRouter from "./stats.js";
 import projectsRouter from "./projects.js";
 import cliRouter from "./cli.js";
@@ -98,10 +94,6 @@ if (swaggerDocument) {
 
 router.use(healthRouter);
 router.use("/projects", projectsRouter);
-router.use("/agents", agentsRouter);
-router.use("/runs", runsRouter);
-router.use("/snapshots", snapshotsRouter);
-router.use("/workspace", workspaceRouter);
 router.use("/cli", cliRouter);
 router.use("/models", modelsRouter);
 router.use("/chat", chatRouter);

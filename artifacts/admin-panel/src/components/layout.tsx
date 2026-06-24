@@ -6,13 +6,11 @@ import {
 } from "@/components/ui/sidebar";
 import { useSidebar } from "@/components/ui/sidebar";
 import {
-  Activity, PlayCircle,
-  Layers, Terminal, SquareTerminal, MessageSquare, BotMessageSquare,
+  Activity, Layers, Terminal, SquareTerminal, MessageSquare,
   Menu, MoreHorizontal, ShieldCheck, LogOut, FlaskConical, ExternalLink,
 } from "lucide-react";
-import { useGetStats, useListRuns, getGetStatsQueryKey, getListRunsQueryKey } from "@workspace/api-client-react";
+import { useGetStats, getGetStatsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@workspace/replit-auth-web";
-import { useSwarmSync } from "@/hooks/use-swarm-sync";
 import { cn } from "@/lib/utils";
 
 function MobileMoreButton() {
@@ -64,10 +62,6 @@ function UserRow() {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: stats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 5000 } });
-  const { data: runs = [] } = useListRuns({ status: "running" }, { query: { queryKey: getListRunsQueryKey({ status: "running" }), refetchInterval: 3000 } });
-  const activeRuns = runs.length;
-
-  useSwarmSync();
 
   const mainNav = [
     { label: "Dashboard", href: "/", icon: Activity },
@@ -75,8 +69,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   ];
   const pipelineNav = [
     { label: "Chat", href: "/chat", icon: MessageSquare },
-    { label: "Ajan Sohbet", href: "/agent-chat", icon: BotMessageSquare },
-    { label: "Runs", href: "/runs", icon: PlayCircle, badge: activeRuns || undefined },
     { label: "Terminal", href: "/terminal", icon: SquareTerminal },
   ];
   const systemNav = [
@@ -88,7 +80,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const bottomNav = [
     { label: "Dashboard", href: "/", icon: Activity },
-    { label: "Runs", href: "/runs", icon: PlayCircle, badge: activeRuns || undefined },
     { label: "Chat", href: "/chat", icon: MessageSquare },
     { label: "Terminal", href: "/terminal", icon: SquareTerminal },
   ];
@@ -100,7 +91,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <SidebarContent>
             <div className="flex h-14 items-center px-4 border-b border-border gap-2">
               <Terminal className="w-5 h-5 text-primary" />
-              <span className="font-bold text-base font-mono text-primary">SWARM_CTRL</span>
+              <span className="font-bold text-base font-mono text-primary">CTRL</span>
               <span className="ml-auto flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                 <span className="text-xs font-mono text-green-400/70">online</span>
@@ -140,12 +131,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             {stats && (
               <div className="mt-auto p-3 border-t border-border/50 space-y-1">
                 <div className="text-xs font-mono text-muted-foreground flex justify-between">
-                  <span>files written</span>
-                  <span className="text-cyan-400">{stats.totalFiles}</span>
+                  <span>projects</span>
+                  <span className="text-cyan-400">{stats.totalProjects}</span>
                 </div>
                 <div className="text-xs font-mono text-muted-foreground flex justify-between">
-                  <span>total logs</span>
-                  <span className="text-cyan-400">{stats.totalLogs}</span>
+                  <span>files</span>
+                  <span className="text-cyan-400">{stats.totalFiles}</span>
                 </div>
               </div>
             )}
@@ -160,7 +151,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             </SidebarTrigger>
             <Terminal className="w-4 h-4 text-primary" />
-            <span className="font-bold text-sm font-mono text-primary">SWARM_CTRL</span>
+            <span className="font-bold text-sm font-mono text-primary">CTRL</span>
             <span className="ml-auto flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               <span className="text-xs font-mono text-green-400/70">online</span>
@@ -190,14 +181,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 {isActive(item.href) && (
                   <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full" />
                 )}
-                <div className="relative">
-                  <item.icon className="w-5 h-5" />
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 bg-primary text-primary-foreground rounded-full text-[10px] font-mono font-bold flex items-center justify-center px-0.5">
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
+                <item.icon className="w-5 h-5" />
                 <span className="text-[10px] font-mono font-medium leading-none">{item.label}</span>
               </Link>
             ))}
