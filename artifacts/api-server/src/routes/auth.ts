@@ -76,7 +76,7 @@ router.get("/callback", async (req: Request, res: Response) => {
 
     const redirectUri = `${getPublicBaseUrl(req)}/api/callback`;
     const currentUrl = new URL(
-      req.url,
+      req.originalUrl,
       getPublicBaseUrl(req),
     );
 
