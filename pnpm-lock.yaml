@@ -156,6 +156,25 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@types/cookie-parser':
+        specifier: 1.4.10
+        version: 1.4.10(@types/express@5.0.6)
+      cookie-parser:
+        specifier: 1.4.7
+        version: 1.4.7
+      cors:
+        specifier: 2.8.6
+        version: 2.8.6
+      drizzle-orm:
+        specifier: 0.45.2
+        version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)
+      httpxy:
+        specifier: 0.5.3
+        version: 0.5.3
+      js-yaml:
+        specifier: 4.1.0
+        version: 4.1.0
     devDependencies:
       prettier:
         specifier: ^3.8.3
@@ -3007,6 +3026,10 @@ packages:
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
+
+  js-yaml@4.1.0:
+    resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
+    hasBin: true
 
   js-yaml@4.1.1:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
@@ -6185,6 +6208,10 @@ snapshots:
   js-cookie@3.0.7: {}
 
   js-tokens@4.0.0: {}
+
+  js-yaml@4.1.0:
+    dependencies:
+      argparse: 2.0.1
 
   js-yaml@4.1.1:
     dependencies:

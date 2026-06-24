@@ -12,5 +12,12 @@
   "devDependencies": {
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "@types/cookie-parser": "1.4.10",
+    "cookie-parser": "1.4.7",
+    "cors": "2.8.6",
+    "drizzle-orm": "0.45.2",
+    "httpxy": "0.5.3"
   }
 }
