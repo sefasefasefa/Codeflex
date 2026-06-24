@@ -32,15 +32,49 @@ function isAppRequest(text: string): string | null {
 }
 
 function guessProjectName(text: string): string {
-  const lower = text.toLowerCase();
-  if (lower.includes("e-ticaret") || lower.includes("eticaret") || lower.includes("shop")) return "E-Ticaret Sitesi";
+  const original = text.trim();
+  const lower = original.toLowerCase();
+
+  // Strip common verb prefixes to get to the noun phrase
+  const stripped = original
+    .replace(/^(benim için|bana bir|bana|bir|the|a|an)\s+/i, "")
+    .replace(/\s+(yap|oluştur|yarat|kur|başlat|geliştir|tasarla|yaz|build me|create|make|develop|design|build|generate)\s*(.*)$/i, "")
+    .replace(/\s+(yap|oluştur|yarat|kur|başlat|geliştir|tasarla|yaz)$/i, "")
+    .trim();
+
+  // Capitalize first letter of each word (Turkish-safe)
+  function titleCase(s: string): string {
+    return s
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
+
+  // If stripped result is reasonable length and not just a keyword, use it
+  if (stripped.length > 2 && stripped.length < 60) {
+    // Clean up trailing punctuation
+    const clean = stripped.replace(/[?.!,]+$/, "").trim();
+    if (clean.length > 2) return titleCase(clean);
+  }
+
+  // Fallback keyword map
+  if (lower.includes("e-ticaret") || lower.includes("eticaret") || lower.includes("shop") || lower.includes("alışveriş")) return "E-Ticaret Sitesi";
   if (lower.includes("blog")) return "Blog";
   if (lower.includes("portfolio") || lower.includes("portföy")) return "Portföy Sitesi";
-  if (lower.includes("dashboard") || lower.includes("panel")) return "Dashboard";
-  if (lower.includes("landing")) return "Landing Page";
-  if (lower.includes("admin")) return "Admin Panel";
+  if (lower.includes("dashboard")) return "Dashboard";
+  if (lower.includes("yönetim paneli") || lower.includes("admin panel")) return "Yönetim Paneli";
+  if (lower.includes("landing page") || lower.includes("landing")) return "Landing Page";
   if (lower.includes("mobil") || lower.includes("mobile")) return "Mobil Uygulama";
   if (lower.includes("web sitesi") || lower.includes("website")) return "Web Sitesi";
+  if (lower.includes("api")) return "API Projesi";
+  if (lower.includes("todo") || lower.includes("yapılacaklar")) return "Todo Uygulaması";
+  if (lower.includes("hava durumu") || lower.includes("weather")) return "Hava Durumu Uygulaması";
+  if (lower.includes("sosyal medya") || lower.includes("social")) return "Sosyal Medya Uygulaması";
+  if (lower.includes("chat") || lower.includes("sohbet") || lower.includes("mesajlaşma")) return "Sohbet Uygulaması";
+  if (lower.includes("oyun") || lower.includes("game")) return "Oyun";
+  if (lower.includes("müzik") || lower.includes("music")) return "Müzik Uygulaması";
+  if (lower.includes("finans") || lower.includes("bütçe") || lower.includes("finance")) return "Finans Uygulaması";
+
   return "Yeni Proje";
 }
 
