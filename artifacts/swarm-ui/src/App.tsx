@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout";
+import { AdminLayout } from "@/components/admin-layout";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
@@ -21,7 +22,29 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 2000, retry: 1 } },
 });
 
+function AdminRouter() {
+  return (
+    <AdminLayout>
+      <Switch>
+        <Route path="/admin/providers" component={Models} />
+        <Route path="/admin/agents" component={Agents} />
+        <Route path="/admin/snapshots" component={Snapshots} />
+        <Route path="/admin/workspace" component={Workspace} />
+        <Route path="/admin" component={Models} />
+      </Switch>
+    </AdminLayout>
+  );
+}
+
 function Router() {
+  const [location] = [window.location.pathname];
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const path = location.replace(base, "") || "/";
+
+  if (path.startsWith("/admin")) {
+    return <AdminRouter />;
+  }
+
   return (
     <AppLayout>
       <Switch>
@@ -30,11 +53,7 @@ function Router() {
         <Route path="/projects/:projectId" component={ProjectDetail} />
         <Route path="/runs" component={Runs} />
         <Route path="/runs/:runId" component={RunDetail} />
-        <Route path="/agents" component={Agents} />
-        <Route path="/snapshots" component={Snapshots} />
-        <Route path="/workspace" component={Workspace} />
         <Route path="/terminal" component={Terminal} />
-        <Route path="/models" component={Models} />
         <Route path="/chat" component={Chat} />
         <Route path="/chat/:id" component={Chat} />
         <Route path="/agent-chat" component={AgentChat} />
@@ -49,11 +68,36 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AppRouterInner />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppRouterInner() {
+  return (
+    <Switch>
+      <Route path="/admin" component={AdminRouter} />
+      <Route path="/admin/:rest*" component={AdminRouter} />
+      <Route>
+        <AppLayout>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/projects" component={Projects} />
+            <Route path="/projects/:projectId" component={ProjectDetail} />
+            <Route path="/runs" component={Runs} />
+            <Route path="/runs/:runId" component={RunDetail} />
+            <Route path="/terminal" component={Terminal} />
+            <Route path="/chat" component={Chat} />
+            <Route path="/chat/:id" component={Chat} />
+            <Route path="/agent-chat" component={AgentChat} />
+            <Route component={NotFound} />
+          </Switch>
+        </AppLayout>
+      </Route>
+    </Switch>
   );
 }
 
