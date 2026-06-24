@@ -15,6 +15,7 @@ import cliRouter from "./cli.js";
 import modelsRouter from "./models.js";
 import chatRouter from "./chat.js";
 import authRouter from "./auth.js";
+import keysRouter from "./keys.js";
 
 const router: IRouter = Router();
 
@@ -103,6 +104,7 @@ router.use("/cli", cliRouter);
 router.use("/models", modelsRouter);
 router.use("/chat", chatRouter);
 router.use(authRouter);
+router.use(keysRouter);
 router.use(statsRouter);
 
 export default router;

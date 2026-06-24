@@ -6,7 +6,7 @@ import { useAuth } from "@workspace/replit-auth-web";
 import { useEffect } from "react";
 
 import Layout from "@/components/layout";
-import Login from "@/pages/login";
+import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
 
 import Chat from "@/pages/chat";
@@ -17,32 +17,43 @@ import Settings from "@/pages/settings";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component, ...rest }: any) {
+function LoadingScreen() {
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-[#080b14]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm text-white/40">Yukleniyor...</span>
+      </div>
+    </div>
+  );
+}
+
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return <div className="h-screen w-full flex items-center justify-center bg-background text-foreground">Yükleniyor...</div>;
-  if (!isAuthenticated) return <Login />;
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) return <Landing />;
 
   return (
     <Layout>
-      <Component {...rest} />
+      <Component />
     </Layout>
   );
 }
 
-function RootRedirect() {
+function RootRoute() {
   const { isAuthenticated, isLoading } = useAuth();
-  
-  if (isLoading) return <div className="h-screen w-full flex items-center justify-center bg-background text-foreground">Yükleniyor...</div>;
-  if (!isAuthenticated) return <Login />;
-  
+
+  if (isLoading) return <LoadingScreen />;
+  if (!isAuthenticated) return <Landing />;
+
   return <Redirect to="/chat" />;
 }
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={RootRedirect} />
+      <Route path="/" component={RootRoute} />
       <Route path="/chat">
         <ProtectedRoute component={Chat} />
       </Route>

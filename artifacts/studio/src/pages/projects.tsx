@@ -12,19 +12,20 @@ export default function Projects() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-6xl mx-auto w-full pb-20 md:pb-8">
+      <div className="flex items-center justify-between mb-5 sm:mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Projeler</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sistemdeki tüm çalışma alanları ve projeler.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Projeler</h1>
+          <p className="text-muted-foreground text-sm mt-1">Sistemdeki tum calisma alanlari.</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" size="sm">
           <Plus className="w-4 h-4" />
-          Yeni Proje
+          <span className="hidden sm:inline">Yeni Proje</span>
+          <span className="sm:hidden">Yeni</span>
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {projects?.map((project) => (
           <Link key={project.id} href={`/projects/${project.id}`}>
             <div className="group border border-border bg-card hover:bg-accent/30 hover:border-primary/50 transition-all rounded-lg p-5 cursor-pointer flex flex-col h-full">

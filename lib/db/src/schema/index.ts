@@ -158,6 +158,19 @@ export const insertModelConfigSchema = createInsertSchema(modelConfigsTable).omi
 export type InsertModelConfig = z.infer<typeof insertModelConfigSchema>;
 export type ModelConfig = typeof modelConfigsTable.$inferSelect;
 
+export const apiKeysTable = pgTable("api_keys", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  name: text("name").notNull(),
+  key: text("key").notNull().unique(),
+  prefix: text("prefix").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+}, (t) => [index("ak_user_idx").on(t.userId)]);
+export const insertApiKeySchema = createInsertSchema(apiKeysTable).omit({ createdAt: true, lastUsedAt: true });
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+export type ApiKey = typeof apiKeysTable.$inferSelect;
+
 export const cliHistoryTable = pgTable("cli_history", {
   id: text("id").primaryKey(),
   projectId: text("project_id"),
