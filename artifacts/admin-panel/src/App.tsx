@@ -4,7 +4,16 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useEffect } from "react";
 import { useAuth } from "@workspace/replit-auth-web";
+import { AppLayout } from "@/components/layout";
 import { AdminLayout } from "@/components/admin-layout";
+import Dashboard from "@/pages/dashboard";
+import Projects from "@/pages/projects";
+import ProjectDetail from "@/pages/project-detail";
+import Chat from "@/pages/chat";
+import AgentChat from "@/pages/agent-chat";
+import Runs from "@/pages/runs";
+import RunDetail from "@/pages/run-detail";
+import Terminal from "@/pages/terminal";
 import Models from "@/pages/models";
 import Agents from "@/pages/agents";
 import Snapshots from "@/pages/snapshots";
@@ -60,18 +69,52 @@ function AppContent() {
 
   return (
     <>
-      <AdminLayout>
-        <Switch>
-          <Route path="/">
-            <Redirect to="/providers" />
-          </Route>
-          <Route path="/providers" component={Models} />
-          <Route path="/agents" component={Agents} />
-          <Route path="/snapshots" component={Snapshots} />
-          <Route path="/workspace" component={Workspace} />
-          <Route component={NotFound} />
-        </Switch>
-      </AdminLayout>
+      <Switch>
+        {/* Admin routes */}
+        <Route path="/admin">
+          <AdminLayout><Redirect to="/admin/providers" /></AdminLayout>
+        </Route>
+        <Route path="/admin/providers">
+          <AdminLayout><Models /></AdminLayout>
+        </Route>
+        <Route path="/admin/agents">
+          <AdminLayout><Agents /></AdminLayout>
+        </Route>
+        <Route path="/admin/snapshots">
+          <AdminLayout><Snapshots /></AdminLayout>
+        </Route>
+        <Route path="/admin/workspace">
+          <AdminLayout><Workspace /></AdminLayout>
+        </Route>
+
+        {/* Main app routes */}
+        <Route path="/">
+          <AppLayout><Dashboard /></AppLayout>
+        </Route>
+        <Route path="/projects">
+          <AppLayout><Projects /></AppLayout>
+        </Route>
+        <Route path="/projects/:id">
+          <AppLayout><ProjectDetail /></AppLayout>
+        </Route>
+        <Route path="/chat">
+          <AppLayout><Chat /></AppLayout>
+        </Route>
+        <Route path="/agent-chat">
+          <AppLayout><AgentChat /></AppLayout>
+        </Route>
+        <Route path="/runs">
+          <AppLayout><Runs /></AppLayout>
+        </Route>
+        <Route path="/runs/:id">
+          <AppLayout><RunDetail /></AppLayout>
+        </Route>
+        <Route path="/terminal">
+          <AppLayout><Terminal /></AppLayout>
+        </Route>
+
+        <Route component={NotFound} />
+      </Switch>
       {!isAuthenticated && <LoginScreen />}
     </>
   );
