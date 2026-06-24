@@ -63,7 +63,7 @@ export default function Projects() {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProject({ agentId: id });
+    await deleteProject({ projectId: id });
     qc.invalidateQueries({ queryKey: getListProjectsQueryKey() });
   };
 

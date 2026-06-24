@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 export default function Runs() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { data: runs } = useListRuns(statusFilter !== "all" ? { status: statusFilter as any } : {}, { query: { refetchInterval: 3000 } });
+  const { data: runs } = useListRuns(statusFilter !== "all" ? { status: statusFilter as any } : {}, { query: { queryKey: getListRunsQueryKey(statusFilter !== "all" ? { status: statusFilter as any } : {}), refetchInterval: 3000 } });
 
   const getStatusColor = (status: string) => {
     switch (status) {

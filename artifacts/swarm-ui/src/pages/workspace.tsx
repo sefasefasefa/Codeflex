@@ -8,6 +8,7 @@ import {
   usePushProjectToGitHub,
   getGetProjectGitHubQueryKey,
   getListProjectFilesQueryKey,
+  getGetProjectFileQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -250,12 +251,12 @@ export default function Workspace() {
 
   const { data: projects } = useListProjects();
   const { data: files, isLoading: filesLoading } = useListProjectFiles(selectedProjectId, {
-    query: { enabled: !!selectedProjectId },
+    query: { queryKey: getListProjectFilesQueryKey(selectedProjectId), enabled: !!selectedProjectId },
   });
   const { data: fileContent, isLoading: contentLoading } = useGetProjectFile(
     selectedProjectId,
     selectedFileId ?? "",
-    { query: { enabled: !!selectedProjectId && !!selectedFileId } },
+    { query: { queryKey: getGetProjectFileQueryKey(selectedProjectId, selectedFileId ?? ""), enabled: !!selectedProjectId && !!selectedFileId } },
   );
 
   const tree = useMemo(() => {

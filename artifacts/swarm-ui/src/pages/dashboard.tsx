@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useGetStats, useListActivity } from "@workspace/api-client-react";
+import { useGetStats, useListActivity, getGetStatsQueryKey, getListActivityQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Cpu, Play, CheckCircle2, XCircle, HardDrive, Terminal, Zap, MemoryStick, Server, Gauge } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -31,8 +31,8 @@ function useCapacity() {
 }
 
 export default function Dashboard() {
-  const { data: stats } = useGetStats({ query: { refetchInterval: 5000 } });
-  const { data: activity } = useListActivity({ limit: 20 }, { query: { refetchInterval: 5000 } });
+  const { data: stats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 5000 } });
+  const { data: activity } = useListActivity({ limit: 20 }, { query: { queryKey: getListActivityQueryKey({ limit: 20 }), refetchInterval: 5000 } });
   const { data: cap } = useCapacity();
 
   return (

@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { runsTable, runLogsTable, activityTable, projectsTable, projectFilesTable, snapshotsTable } from "@workspace/db";
 import { eq, desc, and } from "drizzle-orm";
 import { generateId } from "../lib/id.js";
-import { broadcast } from "../lib/broadcast.js";
+import { broadcast, subscribe, unsubscribe } from "../lib/broadcast.js";
 import { mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import * as github from "../lib/github.js";
@@ -469,6 +469,60 @@ router.delete("/:runId", async (req, res) => {
   if (!run) { res.status(404).json({ error: "Run not found" }); return; }
   broadcast("run_cancelled", runToJson(run));
   res.json(runToJson(run));
+});
+
+router.get("/:runId/stream", async (req, res) => {
+  const { runId } = req.params as { runId: string };
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders();
+
+  const send = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const [run] = await db.select().from(runsTable).where(eq(runsTable.id, runId));
+  if (!run) {
+    send("error", { error: "Run not found" });
+    res.end();
+    return;
+  }
+
+  const existingLogs = await db
+    .select().from(runLogsTable)
+    .where(eq(runLogsTable.runId, runId))
+    .orderBy(runLogsTable.createdAt);
+
+  send("init", { run: runToJson(run), logs: existingLogs.map(logToJson) });
+
+  if (run.status !== "running") {
+    send("done", { status: run.status });
+    res.end();
+    return;
+  }
+
+  const TERMINAL_EVENTS = new Set(["run_completed", "run_failed", "run_cancelled"]);
+
+  const handler = (event: string, data: unknown) => {
+    const d = data as Record<string, unknown>;
+    if (event === "run_log" && d["runId"] === runId) {
+      send("log", d);
+    } else if (TERMINAL_EVENTS.has(event) && (d["id"] === runId || d["runId"] === runId)) {
+      send("status", { event, ...d });
+      send("done", { status: d["status"] ?? event.replace("run_", "") });
+      unsubscribe(handler);
+      res.end();
+    }
+  };
+
+  subscribe(handler);
+
+  req.on("close", () => {
+    unsubscribe(handler);
+  });
 });
 
 export default router;

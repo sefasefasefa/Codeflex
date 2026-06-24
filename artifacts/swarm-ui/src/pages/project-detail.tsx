@@ -3,7 +3,7 @@ import { Link, useRoute } from "wouter";
 import {
   useGetProject, useListProjectFiles, useGetProjectFile,
   useCreateRun, useUpdateProjectMemory, useListAgents,
-  getGetProjectQueryKey, getListProjectFilesQueryKey, getListRunsQueryKey,
+  getGetProjectQueryKey, getListProjectFilesQueryKey, getListRunsQueryKey, getGetProjectFileQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -167,7 +167,7 @@ export default function ProjectDetail() {
   const fileTree = buildFileTree(files);
 
   const { data: fileDetail } = useGetProjectFile(projectId, selectedFileId ?? "", {
-    query: { enabled: !!selectedFileId },
+    query: { queryKey: getGetProjectFileQueryKey(projectId, selectedFileId ?? ""), enabled: !!selectedFileId },
   });
 
   const handleFileSelect = (path: string) => {

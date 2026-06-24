@@ -10,7 +10,7 @@ import {
   Layers, Terminal, SquareTerminal, MessageSquare, BotMessageSquare,
   Menu, MoreHorizontal, ShieldCheck,
 } from "lucide-react";
-import { useGetStats, useListRuns } from "@workspace/api-client-react";
+import { useGetStats, useListRuns, getGetStatsQueryKey, getListRunsQueryKey } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 
 function MobileMoreButton() {
@@ -28,8 +28,8 @@ function MobileMoreButton() {
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { data: stats } = useGetStats({ query: { refetchInterval: 5000 } });
-  const { data: runs = [] } = useListRuns({ status: "running" }, { query: { refetchInterval: 3000 } });
+  const { data: stats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 5000 } });
+  const { data: runs = [] } = useListRuns({ status: "running" }, { query: { queryKey: getListRunsQueryKey({ status: "running" }), refetchInterval: 3000 } });
   const activeRuns = runs.length;
 
   const mainNav = [
