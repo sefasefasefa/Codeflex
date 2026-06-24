@@ -1,39 +1,39 @@
-import { sql } from "drizzle-orm";
-import { index, jsonb, pgTable, timestamp, varchar } from "drizzle-orm/pg-core";
+import { randomUUID } from "crypto";
+import { index, sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-export const sessionsTable = pgTable(
+export const sessionsTable = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: text("sid").primaryKey(),
+    sess: text("sess", { mode: "json" }).notNull(),
+    expire: integer("expire", { mode: "timestamp" }).notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-export const usersTable = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+export const usersTable = sqliteTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).$onUpdate(() => new Date()).notNull(),
 });
 
 export type UpsertUser = typeof usersTable.$inferInsert;
 export type User = typeof usersTable.$inferSelect;
 
-export const userActivityLogsTable = pgTable("user_activity_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clerkUserId: varchar("clerk_user_id").notNull(),
-  eventType: varchar("event_type").notNull(),
-  ipAddress: varchar("ip_address"),
-  userAgent: varchar("user_agent"),
-  country: varchar("country"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+export const userActivityLogsTable = sqliteTable("user_activity_logs", {
+  id: text("id").primaryKey().$defaultFn(() => randomUUID()),
+  clerkUserId: text("clerk_user_id").notNull(),
+  eventType: text("event_type").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  country: text("country"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 }, (table) => [index("idx_activity_clerk_user").on(table.clerkUserId)]);
 
 export type InsertUserActivityLog = typeof userActivityLogsTable.$inferInsert;

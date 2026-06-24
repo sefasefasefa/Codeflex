@@ -56,8 +56,8 @@ async function handleCommand(command: string, ctx: CmdContext): Promise<{ output
   }
 
   if (cmd === "status") {
-    const [agentCount] = await db.select({ c: sql<number>`count(*)::int` }).from(agentsTable);
-    const [projCount] = await db.select({ c: sql<number>`count(*)::int` }).from(projectsTable);
+    const [agentCount] = await db.select({ c: sql<number>`cast(count(*) as integer)` }).from(agentsTable);
+    const [projCount] = await db.select({ c: sql<number>`cast(count(*) as integer)` }).from(projectsTable);
     const runs = await db.select({ status: runsTable.status }).from(runsTable);
     const active = runs.filter(r => r.status === "running").length;
     const done = runs.filter(r => r.status === "completed").length;

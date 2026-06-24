@@ -7,15 +7,15 @@ import { generateId } from "../lib/id.js";
 const router = Router();
 
 router.get("/stats", async (_req, res) => {
-  const [agentCount] = await db.select({ count: sql<number>`count(*)::int` }).from(agentsTable);
-  const [projCount] = await db.select({ count: sql<number>`count(*)::int` }).from(projectsTable);
+  const [agentCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(agentsTable);
+  const [projCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(projectsTable);
   const allRuns = await db.select({ status: runsTable.status }).from(runsTable);
   const activeRuns = allRuns.filter(r => r.status === "running").length;
   const completedRuns = allRuns.filter(r => r.status === "completed").length;
   const failedRuns = allRuns.filter(r => r.status === "failed").length;
-  const [snapCount] = await db.select({ count: sql<number>`count(*)::int` }).from(snapshotsTable);
-  const [logCount] = await db.select({ count: sql<number>`count(*)::int` }).from(runLogsTable);
-  const [fileCount] = await db.select({ count: sql<number>`count(*)::int` }).from(projectFilesTable);
+  const [snapCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(snapshotsTable);
+  const [logCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(runLogsTable);
+  const [fileCount] = await db.select({ count: sql<number>`cast(count(*) as integer)` }).from(projectFilesTable);
   res.json({
     totalAgents: agentCount?.count ?? 0,
     totalProjects: projCount?.count ?? 0,
