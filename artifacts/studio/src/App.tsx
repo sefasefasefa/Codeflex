@@ -105,15 +105,15 @@ function AuthModal() {
         </div>
         {isSignUp ? (
           <SignUp
-            routing="path"
-            path={`${basePath}/sign-up`}
+            routing="virtual"
             signInUrl={`${basePath}/sign-in`}
+            fallbackRedirectUrl={`${basePath}/projects`}
           />
         ) : (
           <SignIn
-            routing="path"
-            path={`${basePath}/sign-in`}
+            routing="virtual"
             signUpUrl={`${basePath}/sign-up`}
+            fallbackRedirectUrl={`${basePath}/projects`}
           />
         )}
       </div>
