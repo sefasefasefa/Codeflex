@@ -14,6 +14,7 @@ import projectsRouter from "./projects.js";
 import cliRouter from "./cli.js";
 import modelsRouter from "./models.js";
 import chatRouter from "./chat.js";
+import authRouter from "./auth.js";
 
 const router: IRouter = Router();
 
@@ -101,6 +102,7 @@ router.use("/workspace", workspaceRouter);
 router.use("/cli", cliRouter);
 router.use("/models", modelsRouter);
 router.use("/chat", chatRouter);
+router.use(authRouter);
 router.use(statsRouter);
 
 export default router;

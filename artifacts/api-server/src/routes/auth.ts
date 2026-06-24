@@ -1,11 +1,5 @@
 import * as oidc from "openid-client";
 import { Router, type IRouter, type Request, type Response } from "express";
-import {
-  GetCurrentAuthUserResponse,
-  ExchangeMobileAuthorizationCodeBody,
-  ExchangeMobileAuthorizationCodeResponse,
-  LogoutMobileSessionResponse,
-} from "@workspace/api-zod";
 import { db, usersTable } from "@workspace/db";
 import {
   clearSession,
@@ -83,11 +77,7 @@ async function upsertUser(claims: Record<string, unknown>) {
 }
 
 router.get("/auth/user", (req: Request, res: Response) => {
-  res.json(
-    GetCurrentAuthUserResponse.parse({
-      user: req.isAuthenticated() ? req.user : null,
-    }),
-  );
+  res.json({ user: req.isAuthenticated() ? req.user : null });
 });
 
 router.get("/login", async (req: Request, res: Response) => {
@@ -205,13 +195,17 @@ router.get("/logout", async (req: Request, res: Response) => {
 router.post(
   "/mobile-auth/token-exchange",
   async (req: Request, res: Response) => {
-    const parsed = ExchangeMobileAuthorizationCodeBody.safeParse(req.body);
-    if (!parsed.success) {
+    const { code, code_verifier, redirect_uri, state, nonce } = req.body as {
+      code?: string;
+      code_verifier?: string;
+      redirect_uri?: string;
+      state?: string;
+      nonce?: string;
+    };
+    if (!code || !code_verifier || !redirect_uri || !state) {
       res.status(400).json({ error: "Missing or invalid required parameters" });
       return;
     }
-
-    const { code, code_verifier, redirect_uri, state, nonce } = parsed.data;
 
     try {
       const config = await getOidcConfig();
@@ -253,7 +247,7 @@ router.post(
       };
 
       const sid = await createSession(sessionData);
-      res.json(ExchangeMobileAuthorizationCodeResponse.parse({ token: sid }));
+      res.json({ token: sid });
     } catch (err) {
       req.log.error({ err }, "Mobile token exchange error");
       res.status(500).json({ error: "Token exchange failed" });
@@ -266,7 +260,7 @@ router.post("/mobile-auth/logout", async (req: Request, res: Response) => {
   if (sid) {
     await deleteSession(sid);
   }
-  res.json(LogoutMobileSessionResponse.parse({ success: true }));
+  res.json({ success: true });
 });
 
 export default router;
