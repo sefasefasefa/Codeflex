@@ -21,10 +21,7 @@ const clerkPubKey = (() => {
   const rawKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
   if (!rawKey) return null;
   try {
-    return publishableKeyFromHost(
-      window.location.hostname,
-      rawKey,
-    );
+    return publishableKeyFromHost(window.location.hostname, rawKey);
   } catch {
     return null;
   }
@@ -108,13 +105,13 @@ function AuthModal() {
           <SignUp
             routing="virtual"
             signInUrl={`${basePath}/sign-in`}
-            fallbackRedirectUrl={`${basePath}/projects`}
+            fallbackRedirectUrl={`${basePath}/chat`}
           />
         ) : (
           <SignIn
             routing="virtual"
             signUpUrl={`${basePath}/sign-up`}
-            fallbackRedirectUrl={`${basePath}/projects`}
+            fallbackRedirectUrl={`${basePath}/chat`}
           />
         )}
       </div>
@@ -131,14 +128,18 @@ function AppContent() {
     <>
       <Switch>
         <Route path="/">
-          <Redirect to="/projects" />
+          <Redirect to="/chat" />
         </Route>
 
         <Route path="/sign-in/*?">
-          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
+          {isSignedIn ? <Redirect to="/chat" /> : (
+            <Layout><Chat /></Layout>
+          )}
         </Route>
         <Route path="/sign-up/*?">
-          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
+          {isSignedIn ? <Redirect to="/chat" /> : (
+            <Layout><Chat /></Layout>
+          )}
         </Route>
 
         <Route path="/chat">
@@ -149,7 +150,7 @@ function AppContent() {
         </Route>
 
         <Route path="/projects">
-          <Projects />
+          <Layout><Projects /></Layout>
         </Route>
 
         <Route path="/projects/:id">
@@ -176,7 +177,7 @@ function NoAuthApp() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Projects />
+        <Layout><Chat /></Layout>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
           <div className="flex flex-col items-center gap-4 w-full max-w-sm">
             <div className="flex items-center gap-2.5">
