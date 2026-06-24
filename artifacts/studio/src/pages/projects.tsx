@@ -6,7 +6,7 @@ import {
   Plus, FolderGit2, Github, Loader2, CheckCircle2, AlertCircle,
   LogOut, Settings, Terminal, Sparkles,
 } from "lucide-react";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@workspace/replit-auth-web";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -208,9 +208,7 @@ export default function Projects() {
   const [importOpen, setImportOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [, navigate] = useLocation();
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const basePath = import.meta.env.BASE_URL?.replace(/\/+$/, "") || "";
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-[#080b14] text-white flex flex-col">
@@ -231,15 +229,15 @@ export default function Projects() {
             >
               <Settings className="w-4 h-4" />
             </button>
-            {user?.imageUrl ? (
-              <img src={user.imageUrl} alt="Kullanici" className="w-8 h-8 rounded-full border border-white/10 object-cover" />
+            {user?.profileImageUrl ? (
+              <img src={user.profileImageUrl} alt="Kullanici" className="w-8 h-8 rounded-full border border-white/10 object-cover" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-semibold text-indigo-300">
                 {user?.firstName?.[0]?.toUpperCase() || "K"}
               </div>
             )}
             <button
-              onClick={() => signOut({ redirectUrl: basePath || "/" })}
+              onClick={logout}
               className="p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
               title="Çıkış Yap"
             >

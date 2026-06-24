@@ -1,21 +1,20 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { getAuth } from "@clerk/express";
 import { db, apiKeysTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { randomBytes } from "crypto";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router: IRouter = Router();
 
 function requireAuth(req: Request, res: Response): string | null {
-  const { userId } = getAuth(req);
-  if (!userId) {
+  if (!req.isAuthenticated()) {
     res.status(401).json({ error: "Oturum acmaniz gerekiyor" });
     return null;
   }
-  return userId;
+  return req.user.id;
 }
 
-router.get("/keys", async (req: Request, res: Response) => {
+router.get("/keys", authMiddleware, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
 
@@ -33,7 +32,7 @@ router.get("/keys", async (req: Request, res: Response) => {
   res.json(keys);
 });
 
-router.post("/keys", async (req: Request, res: Response) => {
+router.post("/keys", authMiddleware, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
 
@@ -56,26 +55,36 @@ router.post("/keys", async (req: Request, res: Response) => {
     prefix,
   });
 
-  res.status(201).json({ id, name: name.trim(), prefix, key, createdAt: new Date().toISOString() });
+  res.status(201).json({
+    id,
+    name: name.trim(),
+    prefix,
+    key,
+    createdAt: new Date().toISOString(),
+  });
 });
 
-router.delete("/keys/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+router.delete(
+  "/keys/:id",
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const userId = requireAuth(req, res);
+    if (!userId) return;
 
-  const { id } = req.params;
+    const { id } = req.params;
 
-  const deleted = await db
-    .delete(apiKeysTable)
-    .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, userId)))
-    .returning({ id: apiKeysTable.id });
+    const deleted = await db
+      .delete(apiKeysTable)
+      .where(and(eq(apiKeysTable.id, id), eq(apiKeysTable.userId, userId)))
+      .returning({ id: apiKeysTable.id });
 
-  if (deleted.length === 0) {
-    res.status(404).json({ error: "Anahtar bulunamadi" });
-    return;
-  }
+    if (deleted.length === 0) {
+      res.status(404).json({ error: "Anahtar bulunamadi" });
+      return;
+    }
 
-  res.status(204).send();
-});
+    res.status(204).send();
+  },
+);
 
 export default router;

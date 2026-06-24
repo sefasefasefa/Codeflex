@@ -3,7 +3,7 @@ import { Key, Plus, Trash2, Eye, EyeOff, Copy, Check, Settings2, Shield } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@workspace/replit-auth-web";
 
 interface ApiKey {
   id: string;
@@ -237,14 +237,12 @@ function ApiKeysSection() {
 }
 
 function ProfileSection() {
-  const { user } = useUser();
-  const { signOut } = useClerk();
-  const basePath = import.meta.env.BASE_URL.replace(/\/+$/, "");
+  const { user, logout } = useAuth();
 
-  const profileImage = user?.imageUrl;
+  const profileImage = user?.profileImageUrl;
   const firstName = user?.firstName;
   const lastName = user?.lastName;
-  const email = user?.primaryEmailAddress?.emailAddress;
+  const email = user?.email;
 
   return (
     <div className="border border-border bg-card rounded-lg p-4 sm:p-6">
@@ -262,14 +260,13 @@ function ProfileSection() {
             {[firstName, lastName].filter(Boolean).join(" ") || "Kullanici"}
           </div>
           <div className="text-sm text-muted-foreground truncate">{email || ""}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">Clerk ile giris yapildi</div>
         </div>
       </div>
       <div className="mt-4 pt-4 border-t border-border">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => signOut({ redirectUrl: basePath || "/" })}
+          onClick={logout}
           className="gap-2 text-muted-foreground hover:text-destructive"
         >
           Cikis Yap

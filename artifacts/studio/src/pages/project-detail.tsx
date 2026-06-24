@@ -10,11 +10,11 @@ import {
   Terminal, Zap, Settings,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@workspace/replit-auth-web";
 
-function Avatar({ user }: { user: { firstName?: string | null; imageUrl?: string | null } | null }) {
-  if (user?.imageUrl) {
-    return <img src={user.imageUrl} alt="K" className="w-7 h-7 rounded-full border border-white/10 object-cover" />;
+function Avatar({ user }: { user: { firstName?: string | null; profileImageUrl?: string | null } | null }) {
+  if (user?.profileImageUrl) {
+    return <img src={user.profileImageUrl} alt="K" className="w-7 h-7 rounded-full border border-white/10 object-cover" />;
   }
   return (
     <div className="w-7 h-7 rounded-full bg-indigo-600/30 border border-indigo-500/30 flex items-center justify-center text-xs font-semibold text-indigo-300">
@@ -375,8 +375,7 @@ export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { data: project, isLoading } = useGetProject(id);
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, logout } = useAuth();
   const basePath = import.meta.env.BASE_URL?.replace(/\/+$/, "") || "";
 
   if (isLoading) {
@@ -429,7 +428,7 @@ export default function ProjectDetail() {
             <Settings className="w-3.5 h-3.5" />
           </button>
           <Avatar user={user} />
-          <button onClick={() => signOut({ redirectUrl: basePath || "/" })}
+          <button onClick={logout}
             className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />
           </button>

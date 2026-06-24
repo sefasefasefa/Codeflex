@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { MessageSquare, Globe, Monitor, Plus, Settings, LogOut } from "lucide-react";
-import { useUser, useClerk } from "@clerk/react";
+import { useAuth } from "@workspace/replit-auth-web";
 
 const NAV_ITEMS = [
   { href: "/chat",     icon: MessageSquare, label: "Sohbet" },
@@ -20,11 +20,11 @@ function SwarmIcon({ className }: { className?: string }) {
 }
 
 function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
-  const { user } = useUser();
+  const { user } = useAuth();
   const dim = size === "md" ? "w-10 h-10" : "w-8 h-8";
   const text = size === "md" ? "text-sm" : "text-xs";
-  if (user?.imageUrl) {
-    return <img src={user.imageUrl} alt="Profil" className={`${dim} rounded-xl border border-white/10 object-cover`} />;
+  if (user?.profileImageUrl) {
+    return <img src={user.profileImageUrl} alt="Profil" className={`${dim} rounded-xl border border-white/10 object-cover`} />;
   }
   return (
     <div className={`${dim} rounded-xl bg-white/10 border border-white/10 flex items-center justify-center ${text} font-semibold text-white/70`}>
@@ -35,8 +35,7 @@ function UserAvatar({ size = "sm" }: { size?: "sm" | "md" }) {
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
-  const { signOut } = useClerk();
-  const basePath = import.meta.env.BASE_URL?.replace(/\/+$/, "") || "";
+  const { logout } = useAuth();
 
   const isActive = (href: string) => location === href || location.startsWith(href + "/");
 
@@ -73,7 +72,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="text-xs font-medium truncate text-white/80">Profil</div>
           </div>
           <button
-            onClick={() => signOut({ redirectUrl: basePath || "/" })}
+            onClick={logout}
             className="p-1.5 rounded-md text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0"
             title="Çıkış Yap"
           >
@@ -87,7 +86,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile Bottom Nav — matches image style */}
+      {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-[72px] bg-[#111318]/95 backdrop-blur-xl border-t border-white/5">
         {/* Avatar */}
         <Link href="/settings">
@@ -130,9 +129,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <Link href="/chat">
           <button
             className="flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all"
-            onClick={() => {
-              window.location.href = `${basePath}/chat`;
-            }}
           >
             <Plus className="w-5 h-5" />
           </button>
