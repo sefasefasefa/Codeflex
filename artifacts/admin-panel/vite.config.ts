@@ -53,7 +53,6 @@ export default defineConfig({
     hmr: { overlay: false },
     headers: {
       "Cache-Control": "no-store",
-      "X-Frame-Options": "ALLOWALL",
     },
     fs: {
       strict: true,
