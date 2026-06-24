@@ -497,6 +497,33 @@ export const GetStatsResponse = zod.object({
 
 
 /**
+ * @summary Get activity logs for the current user
+ */
+export const ListUserActivityQueryParams = zod.object({
+  "limit": zod.coerce.number().optional()
+})
+
+export const ListUserActivityResponseItem = zod.object({
+  "id": zod.string(),
+  "clerkUserId": zod.string(),
+  "eventType": zod.string(),
+  "ipAddress": zod.string().nullish(),
+  "userAgent": zod.string().nullish(),
+  "country": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListUserActivityResponse = zod.array(ListUserActivityResponseItem)
+
+
+/**
+ * @summary Log a user activity event
+ */
+export const CreateUserActivityBody = zod.object({
+  "eventType": zod.string()
+})
+
+
+/**
  * @summary Recent activity feed
  */
 export const ListActivityQueryParams = zod.object({

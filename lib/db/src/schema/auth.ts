@@ -25,3 +25,16 @@ export const usersTable = pgTable("users", {
 
 export type UpsertUser = typeof usersTable.$inferInsert;
 export type User = typeof usersTable.$inferSelect;
+
+export const userActivityLogsTable = pgTable("user_activity_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  clerkUserId: varchar("clerk_user_id").notNull(),
+  eventType: varchar("event_type").notNull(),
+  ipAddress: varchar("ip_address"),
+  userAgent: varchar("user_agent"),
+  country: varchar("country"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("idx_activity_clerk_user").on(table.clerkUserId)]);
+
+export type InsertUserActivityLog = typeof userActivityLogsTable.$inferInsert;
+export type UserActivityLog = typeof userActivityLogsTable.$inferSelect;

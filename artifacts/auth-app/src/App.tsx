@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { dark } from "@clerk/themes";
 import { Switch, Route, useLocation, Router as WouterRouter, Link } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { useListUserActivity, useCreateUserActivity } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 
@@ -13,7 +14,6 @@ const clerkPubKey = publishableKeyFromHost(
 );
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
@@ -77,29 +77,156 @@ const clerkAppearance = {
   },
 };
 
-function SignInPage() {
+function getDeviceType(ua: string): string {
+  if (/mobile/i.test(ua)) return "Mobil";
+  if (/tablet/i.test(ua)) return "Tablet";
+  return "Masaüstü";
+}
+
+function getBrowser(ua: string): string {
+  if (/edg\//i.test(ua)) return "Edge";
+  if (/chrome/i.test(ua)) return "Chrome";
+  if (/firefox/i.test(ua)) return "Firefox";
+  if (/safari/i.test(ua)) return "Safari";
+  if (/opera/i.test(ua)) return "Opera";
+  return "Tarayıcı";
+}
+
+function getOS(ua: string): string {
+  if (/windows/i.test(ua)) return "Windows";
+  if (/mac os/i.test(ua)) return "macOS";
+  if (/iphone|ipad/i.test(ua)) return "iOS";
+  if (/android/i.test(ua)) return "Android";
+  if (/linux/i.test(ua)) return "Linux";
+  return "Bilinmiyor";
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("tr-TR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function EventBadge({ type }: { type: string }) {
+  const styles: Record<string, string> = {
+    login: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    logout: "bg-red-500/15 text-red-400 border-red-500/30",
+    signup: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+  };
+  const labels: Record<string, string> = {
+    login: "Giriş",
+    logout: "Çıkış",
+    signup: "Kayıt",
+  };
+  const cls = styles[type] || "bg-slate-500/15 text-slate-400 border-slate-500/30";
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
-      <div className="w-full max-w-md">
-        <SignIn
-          routing="path"
-          path={`${basePath}/sign-in`}
-          signUpUrl={`${basePath}/sign-up`}
-        />
-      </div>
-    </div>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}>
+      {labels[type] || type}
+    </span>
   );
 }
 
-function SignUpPage() {
+function ActivityLogPage() {
+  const { data: logs, isLoading } = useListUserActivity({ limit: 100 });
+
   return (
-    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
-      <div className="w-full max-w-md">
-        <SignUp
-          routing="path"
-          path={`${basePath}/sign-up`}
-          signInUrl={`${basePath}/sign-in`}
-        />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <Link
+            to="/"
+            className="text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-slate-100">Aktivite Geçmişi</h1>
+            <p className="text-sm text-slate-500">Hesabına ait giriş ve işlem kayıtları</p>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-4 animate-pulse">
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 bg-slate-700 rounded-lg flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-3 bg-slate-700 rounded w-1/3" />
+                    <div className="h-3 bg-slate-700 rounded w-2/3" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !logs || logs.length === 0 ? (
+          <div className="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-12 text-center">
+            <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <p className="text-slate-400 font-medium">Henüz aktivite kaydı yok</p>
+            <p className="text-slate-600 text-sm mt-1">İlk girişinden sonra burada görünecek</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {logs.map((log) => {
+              const ua = log.userAgent || "";
+              const device = getDeviceType(ua);
+              const browser = getBrowser(ua);
+              const os = getOS(ua);
+              return (
+                <div
+                  key={log.id}
+                  className="bg-slate-800/60 border border-slate-700/40 rounded-xl p-4 hover:border-slate-600/60 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 bg-slate-700/80 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      {log.eventType === "login" || log.eventType === "signup" ? (
+                        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <EventBadge type={log.eventType} />
+                        <span className="text-slate-500 text-xs">{formatDate(log.createdAt)}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
+                          </svg>
+                          {device} · {browser} · {os}
+                        </span>
+                        {log.ipAddress && (
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                            </svg>
+                            {log.ipAddress}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -108,6 +235,15 @@ function SignUpPage() {
 function UserPortalPage() {
   const { user } = useUser();
   const { signOut } = useClerk();
+  const { mutate: logActivity } = useCreateUserActivity();
+  const hasLoggedRef = useRef(false);
+
+  useEffect(() => {
+    if (user && !hasLoggedRef.current) {
+      hasLoggedRef.current = true;
+      logActivity({ data: { eventType: "login" } });
+    }
+  }, [user, logActivity]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center p-6">
@@ -155,12 +291,52 @@ function UserPortalPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => signOut({ redirectUrl: basePath || "/" })}
-          className="w-full py-3 px-4 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 hover:text-red-300 rounded-xl transition-colors font-medium"
-        >
-          Çıkış Yap
-        </button>
+        <div className="space-y-3">
+          <Link
+            to="/activity"
+            className="w-full flex items-center justify-between py-3 px-4 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 rounded-xl transition-colors font-medium group"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              Aktivite Geçmişi
+            </span>
+            <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+
+          <button
+            onClick={() => {
+              logActivity({ data: { eventType: "logout" } });
+              signOut({ redirectUrl: basePath || "/" });
+            }}
+            className="w-full py-3 px-4 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 hover:text-red-300 rounded-xl transition-colors font-medium"
+          >
+            Çıkış Yap
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
+      <div className="w-full max-w-md">
+        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      </div>
+    </div>
+  );
+}
+
+function SignUpPage() {
+  return (
+    <div className="flex min-h-[100dvh] items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4">
+      <div className="w-full max-w-md">
+        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
       </div>
     </div>
   );
@@ -177,72 +353,49 @@ function HomePage() {
             </svg>
           </div>
         </div>
-
-        <h1 className="text-4xl font-bold text-slate-100 mb-3">
-          Güvenli Giriş
-        </h1>
-        <p className="text-slate-400 text-lg mb-10">
-          Email ile veya sosyal hesaplarınla giriş yap
-        </p>
+        <h1 className="text-4xl font-bold text-slate-100 mb-3">Güvenli Giriş</h1>
+        <p className="text-slate-400 text-lg mb-10">Email ile veya sosyal hesaplarınla giriş yap</p>
 
         <div className="grid grid-cols-1 gap-3 mb-8">
-          <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
-            <div className="w-9 h-9 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+          {[
+            { icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z", title: "Email + Şifre", desc: "Klasik email ile giriş" },
+            { icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: "Email Kodu (OTP)", desc: "Şifresiz, tek kullanımlık kod" },
+          ].map((item) => (
+            <div key={item.title} className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
+              <div className="w-9 h-9 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                </svg>
+              </div>
+              <div>
+                <p className="text-slate-200 font-medium text-sm">{item.title}</p>
+                <p className="text-slate-500 text-xs">{item.desc}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-slate-200 font-medium text-sm">Email + Şifre</p>
-              <p className="text-slate-500 text-xs">Klasik email ile giriş</p>
+          ))}
+          {[
+            { label: "Google ile Giriş", desc: "Google hesabınla devam et" },
+            { label: "Apple ile Giriş", desc: "Apple ID ile devam et" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
+              <div className="w-9 h-9 bg-slate-700/60 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-slate-200 font-medium text-sm">{item.label}</p>
+                <p className="text-slate-500 text-xs">{item.desc}</p>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
-            <div className="w-9 h-9 bg-indigo-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-slate-200 font-medium text-sm">Email Kodu (OTP)</p>
-              <p className="text-slate-500 text-xs">Şifresiz, tek kullanımlık kod</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
-            <div className="w-9 h-9 bg-slate-700/60 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 0 1 .083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.632-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.987C24.007 5.367 18.641 0 12.017 0z"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-slate-200 font-medium text-sm">Google ile Giriş</p>
-              <p className="text-slate-500 text-xs">Google hesabınla devam et</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4 text-left">
-            <div className="w-9 h-9 bg-slate-700/60 rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-slate-300" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.137 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-slate-200 font-medium text-sm">Apple ile Giriş</p>
-              <p className="text-slate-500 text-xs">Apple ID ile devam et</p>
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="flex gap-3">
-          <Link
-            to="/sign-in"
-            className="flex-1 py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-indigo-500/20"
-          >
+          <Link to="/sign-in" className="flex-1 py-3 px-6 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors shadow-lg shadow-indigo-500/20">
             Giriş Yap
           </Link>
-          <Link
-            to="/sign-up"
-            className="flex-1 py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl font-semibold transition-colors"
-          >
+          <Link to="/sign-up" className="flex-1 py-3 px-6 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl font-semibold transition-colors">
             Kayıt Ol
           </Link>
         </div>
@@ -254,29 +407,21 @@ function HomePage() {
 function HomeRedirect() {
   return (
     <>
-      <Show when="signed-in">
-        <UserPortalPage />
-      </Show>
-      <Show when="signed-out">
-        <HomePage />
-      </Show>
+      <Show when="signed-in"><UserPortalPage /></Show>
+      <Show when="signed-out"><HomePage /></Show>
     </>
   );
 }
 
-function UserPortal() {
+function ActivityRoute() {
   return (
     <>
-      <Show when="signed-in">
-        <UserPortalPage />
-      </Show>
+      <Show when="signed-in"><ActivityLogPage /></Show>
       <Show when="signed-out">
         <div className="min-h-screen bg-slate-950 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-slate-400 mb-4">Bu sayfayı görmek için giriş yapmanız gerekiyor.</p>
-            <Link to="/sign-in" className="text-indigo-400 hover:text-indigo-300 underline">
-              Giriş Yap
-            </Link>
+            <p className="text-slate-400 mb-4">Aktivite geçmişini görmek için giriş yapmanız gerekiyor.</p>
+            <Link to="/sign-in" className="text-indigo-400 hover:text-indigo-300 underline">Giriş Yap</Link>
           </div>
         </div>
       </Show>
@@ -314,18 +459,8 @@ function ClerkProviderWithRoutes() {
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       localization={{
-        signIn: {
-          start: {
-            title: "Tekrar hoş geldin",
-            subtitle: "Hesabına giriş yap",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Hesap oluştur",
-            subtitle: "Bugün başla",
-          },
-        },
+        signIn: { start: { title: "Tekrar hoş geldin", subtitle: "Hesabına giriş yap" } },
+        signUp: { start: { title: "Hesap oluştur", subtitle: "Bugün başla" } },
       }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
@@ -336,7 +471,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/" component={HomeRedirect} />
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
-          <Route path="/user-portal" component={UserPortal} />
+          <Route path="/activity" component={ActivityRoute} />
         </Switch>
       </QueryClientProvider>
     </ClerkProvider>

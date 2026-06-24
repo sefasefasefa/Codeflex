@@ -32,6 +32,7 @@ import type {
   HealthStatus,
   ListActivityParams,
   ListRunsParams,
+  ListUserActivityParams,
   ListWorkspaceFilesParams,
   MemoryPatch,
   Project,
@@ -47,6 +48,8 @@ import type {
   Snapshot,
   SnapshotInput,
   SystemStats,
+  UserActivityInput,
+  UserActivityLog,
   WorkspaceFile,
   WorkspaceFileContent
 } from './api.schemas';
@@ -2016,6 +2019,161 @@ export function useGetStats<TData = Awaited<ReturnType<typeof getStats>>, TError
 
 
 
+
+export const getListUserActivityUrl = (params?: ListUserActivityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/user-activity?${stringifiedParams}` : `/api/user-activity`
+}
+
+/**
+ * @summary Get activity logs for the current user
+ */
+export const listUserActivity = async (params?: ListUserActivityParams, options?: RequestInit): Promise<UserActivityLog[]> => {
+
+  return customFetch<UserActivityLog[]>(getListUserActivityUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserActivityQueryKey = (params?: ListUserActivityParams,) => {
+    return [
+    `/api/user-activity`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListUserActivityQueryOptions = <TData = Awaited<ReturnType<typeof listUserActivity>>, TError = ErrorType<void>>(params?: ListUserActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserActivityQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserActivity>>> = ({ signal }) => listUserActivity(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserActivityQueryResult = NonNullable<Awaited<ReturnType<typeof listUserActivity>>>
+export type ListUserActivityQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get activity logs for the current user
+ */
+
+export function useListUserActivity<TData = Awaited<ReturnType<typeof listUserActivity>>, TError = ErrorType<void>>(
+ params?: ListUserActivityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserActivity>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserActivityQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateUserActivityUrl = () => {
+
+
+
+
+  return `/api/user-activity`
+}
+
+/**
+ * @summary Log a user activity event
+ */
+export const createUserActivity = async (userActivityInput: UserActivityInput, options?: RequestInit): Promise<UserActivityLog> => {
+
+  return customFetch<UserActivityLog>(getCreateUserActivityUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userActivityInput,)
+  }
+);}
+
+
+
+
+export const getCreateUserActivityMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUserActivity>>, TError,{data: BodyType<UserActivityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createUserActivity>>, TError,{data: BodyType<UserActivityInput>}, TContext> => {
+
+const mutationKey = ['createUserActivity'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createUserActivity>>, {data: BodyType<UserActivityInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createUserActivity(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateUserActivityMutationResult = NonNullable<Awaited<ReturnType<typeof createUserActivity>>>
+    export type CreateUserActivityMutationBody = BodyType<UserActivityInput>
+    export type CreateUserActivityMutationError = ErrorType<void>
+
+    /**
+ * @summary Log a user activity event
+ */
+export const useCreateUserActivity = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUserActivity>>, TError,{data: BodyType<UserActivityInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createUserActivity>>,
+        TError,
+        {data: BodyType<UserActivityInput>},
+        TContext
+      > => {
+      return useMutation(getCreateUserActivityMutationOptions(options));
+    }
 
 export const getListActivityUrl = (params?: ListActivityParams,) => {
   const normalizedParams = new URLSearchParams();

@@ -382,6 +382,23 @@ export interface CliHistoryEntry {
   createdAt: string;
 }
 
+export interface UserActivityLog {
+  id: string;
+  clerkUserId: string;
+  eventType: string;
+  /** @nullable */
+  ipAddress?: string | null;
+  /** @nullable */
+  userAgent?: string | null;
+  /** @nullable */
+  country?: string | null;
+  createdAt: string;
+}
+
+export interface UserActivityInput {
+  eventType: string;
+}
+
 export type ListRunsParams = {
 status?: ListRunsStatus;
 projectId?: string;
@@ -405,6 +422,10 @@ project?: string;
 
 export type GetWorkspaceFileParams = {
 path: string;
+};
+
+export type ListUserActivityParams = {
+limit?: number;
 };
 
 export type ListActivityParams = {

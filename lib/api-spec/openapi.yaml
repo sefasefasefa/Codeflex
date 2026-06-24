@@ -502,6 +502,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/SystemStats"
 
+  /user-activity:
+    get:
+      operationId: listUserActivity
+      tags: [stats]
+      summary: Get activity logs for the current user
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User activity log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserActivityLog"
+        "401":
+          description: Unauthorized
+    post:
+      operationId: createUserActivity
+      tags: [stats]
+      summary: Log a user activity event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserActivityInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserActivityLog"
+        "401":
+          description: Unauthorized
+
   /activity:
     get:
       operationId: listActivity
@@ -1060,4 +1102,30 @@ components:
         projectId:
           type: ["string", "null"]
         createdAt:
+          type: string
+
+    UserActivityLog:
+      type: object
+      required: [id, clerkUserId, eventType, createdAt]
+      properties:
+        id:
+          type: string
+        clerkUserId:
+          type: string
+        eventType:
+          type: string
+        ipAddress:
+          type: ["string", "null"]
+        userAgent:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    UserActivityInput:
+      type: object
+      required: [eventType]
+      properties:
+        eventType:
           type: string
