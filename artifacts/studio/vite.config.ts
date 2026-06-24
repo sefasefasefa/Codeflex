@@ -15,17 +15,9 @@ const basePath = process.env.BASE_PATH ?? "/studio/";
 
 export default defineConfig({
   base: basePath,
-  define: {
-    "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
-      process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY ?? undefined,
-    ),
-    "import.meta.env.VITE_CLERK_PROXY_URL": JSON.stringify(
-      process.env.VITE_CLERK_PROXY_URL ?? undefined,
-    ),
-  },
   plugins: [
     react(),
-    tailwindcss({ optimize: false }),
+    tailwindcss(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
@@ -58,8 +50,9 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    hmr: { overlay: false },
     fs: {
-      strict: true,
+      strict: false,
     },
     proxy: {
       "/api": {
