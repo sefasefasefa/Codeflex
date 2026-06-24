@@ -30,10 +30,10 @@ export default defineConfig({
   base: basePath,
   define: {
     "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
-      process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY ?? "",
+      process.env.VITE_CLERK_PUBLISHABLE_KEY ?? process.env.CLERK_PUBLISHABLE_KEY ?? undefined,
     ),
     "import.meta.env.VITE_CLERK_PROXY_URL": JSON.stringify(
-      process.env.VITE_CLERK_PROXY_URL ?? "",
+      process.env.VITE_CLERK_PROXY_URL ?? undefined,
     ),
   },
   plugins: [

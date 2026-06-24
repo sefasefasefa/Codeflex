@@ -18,10 +18,12 @@ const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
 const clerkPubKey = (() => {
+  const rawKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+  if (!rawKey) return null;
   try {
     return publishableKeyFromHost(
       window.location.hostname,
-      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+      rawKey,
     );
   } catch {
     return null;
@@ -119,7 +121,10 @@ function ProtectedSettings() {
 function Router() {
   const { isLoaded, isSignedIn } = useUser();
 
-  if (!isLoaded) return <LoadingScreen />;
+  if (!isLoaded) {
+    if (!clerkPubKey) return <Landing />;
+    return <LoadingScreen />;
+  }
 
   return (
     <Switch>
@@ -170,16 +175,12 @@ function NoAuthApp() {
   );
 }
 
-function ClerkProviderWithRoutes() {
+function AuthApp() {
   const [, setLocation] = useLocation();
-
-  if (!clerkPubKey) {
-    return <NoAuthApp />;
-  }
 
   return (
     <ClerkProvider
-      publishableKey={clerkPubKey}
+      publishableKey={clerkPubKey!}
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
@@ -204,7 +205,7 @@ function App() {
 
   return (
     <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
+      {clerkPubKey ? <AuthApp /> : <NoAuthApp />}
     </WouterRouter>
   );
 }
