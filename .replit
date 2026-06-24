@@ -48,25 +48,25 @@ waitForPort = 8080
 name = "Studio"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=3001 pnpm --filter @workspace/studio run dev"
-waitForPort = 3001
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3001 BASE_PATH=/studio/ pnpm --filter @workspace/studio run dev"
+waitForPort = 3001
 
 [[workflows.workflow]]
 name = "CLI Web"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=3002 pnpm --filter @workspace/cli-web run dev"
-waitForPort = 3002
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "PORT=3002 BASE_PATH=/cli/ pnpm --filter @workspace/cli-web run dev"
+waitForPort = 3002
 
 [[workflows.workflow]]
 name = "Admin Panel"

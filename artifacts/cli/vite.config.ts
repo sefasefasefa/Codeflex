@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import type { Plugin } from "vite";
 
 const rawPort = process.env.PORT ?? "3002";
 const port = Number(rawPort);
@@ -13,9 +14,26 @@ if (Number.isNaN(port) || port <= 0) {
 
 const basePath = process.env.BASE_PATH ?? "/";
 
+function rootRedirectPlugin(): Plugin {
+  return {
+    name: "root-redirect",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (basePath !== "/" && req.url === "/") {
+          _res.writeHead(302, { Location: basePath });
+          _res.end();
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
+    rootRedirectPlugin(),
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),

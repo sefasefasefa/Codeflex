@@ -60,6 +60,17 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      "/studio": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
+        rewrite: (path) => path,
+      },
+      "/cli": {
+        target: "http://localhost:3002",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   preview: {
