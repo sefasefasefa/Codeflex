@@ -19,11 +19,21 @@ router.get("/auth/user", authMiddleware, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
+function getPublicBaseUrl(req: Request): string {
+  const replitDomain = process.env.REPLIT_DOMAINS ?? process.env.REPLIT_DEV_DOMAIN;
+  if (replitDomain) {
+    return `https://${replitDomain.split(",")[0].trim()}`;
+  }
+  const proto = req.headers["x-forwarded-proto"] ?? req.protocol;
+  const host = req.headers["x-forwarded-host"] ?? req.get("host");
+  return `${proto}://${host}`;
+}
+
 router.get("/login", async (req: Request, res: Response) => {
   try {
     const returnTo = (req.query.returnTo as string) ?? "/";
     const config = await getOidcConfig();
-    const redirectUri = `${req.protocol}://${req.get("host")}/api/callback`;
+    const redirectUri = `${getPublicBaseUrl(req)}/api/callback`;
     const codeVerifier = oidc.randomPKCECodeVerifier();
     const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
     const state = oidc.randomState();
@@ -59,10 +69,10 @@ router.get("/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    const redirectUri = `${req.protocol}://${req.get("host")}/api/callback`;
+    const redirectUri = `${getPublicBaseUrl(req)}/api/callback`;
     const currentUrl = new URL(
       req.url,
-      `${req.protocol}://${req.get("host")}`,
+      getPublicBaseUrl(req),
     );
 
     const tokens = await oidc.authorizationCodeGrant(config, currentUrl, {
