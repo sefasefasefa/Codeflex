@@ -17,6 +17,7 @@ import chatRouter from "./chat.js";
 import authRouter from "./auth.js";
 import keysRouter from "./keys.js";
 import userActivityRouter from "./userActivity.js";
+import uploadRouter from "./upload.js";
 
 const router: IRouter = Router();
 
@@ -108,5 +109,6 @@ router.use(authRouter);
 router.use(keysRouter);
 router.use(statsRouter);
 router.use(userActivityRouter);
+router.use(uploadRouter);
 
 export default router;

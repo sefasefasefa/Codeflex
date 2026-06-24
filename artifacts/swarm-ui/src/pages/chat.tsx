@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   MessageSquare, Plus, Trash2, Send, Loader2, FileCode2,
   ChevronDown, ChevronRight, Copy, Check, Bot, User,
-  Layers, RefreshCw, FolderOpen, Sparkles,
+  Layers, RefreshCw, FolderOpen, Sparkles, Paperclip, X,
+  FileText, FileSpreadsheet, Presentation, File,
 } from "lucide-react";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -41,7 +42,31 @@ type Conversation = {
 
 type Project = { id: string; name: string; status: string };
 
-// ── Markdown-like renderer (no external dep) ──────────────────────────────────
+type AttachedFile = {
+  id: string;
+  filename: string;
+  ext: string;
+  sizeBytes: number;
+  text: string;
+  charCount: number;
+};
+
+// ── File icon helper ───────────────────────────────────────────────────────────
+function FileIcon({ ext, className }: { ext: string; className?: string }) {
+  if ([".pdf"].includes(ext)) return <FileText className={className} />;
+  if ([".xlsx", ".xls", ".csv", ".tsv"].includes(ext)) return <FileSpreadsheet className={className} />;
+  if ([".pptx", ".ppt"].includes(ext)) return <Presentation className={className} />;
+  if ([".docx", ".doc", ".rtf", ".txt", ".md"].includes(ext)) return <FileText className={className} />;
+  return <File className={className} />;
+}
+
+function formatBytes(b: number) {
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+
+// ── Markdown-like renderer ────────────────────────────────────────────────────
 function renderMarkdown(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const lines = text.split("\n");
@@ -51,7 +76,6 @@ function renderMarkdown(text: string): React.ReactNode[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Code block
     if (line.startsWith("```")) {
       const lang = line.slice(3).trim();
       const codeLines: string[] = [];
@@ -65,67 +89,27 @@ function renderMarkdown(text: string): React.ReactNode[] {
       continue;
     }
 
-    // Heading
-    if (line.startsWith("### ")) {
-      nodes.push(<h3 key={key++} className="text-sm font-bold font-mono text-foreground mt-3 mb-1">{line.slice(4)}</h3>);
-      i++; continue;
-    }
-    if (line.startsWith("## ")) {
-      nodes.push(<h2 key={key++} className="text-base font-bold font-mono text-foreground mt-4 mb-1">{line.slice(3)}</h2>);
-      i++; continue;
-    }
-    if (line.startsWith("# ")) {
-      nodes.push(<h1 key={key++} className="text-lg font-bold font-mono text-foreground mt-4 mb-2">{line.slice(2)}</h1>);
-      i++; continue;
-    }
+    if (line.startsWith("### ")) { nodes.push(<h3 key={key++} className="text-sm font-bold font-mono text-foreground mt-3 mb-1">{line.slice(4)}</h3>); i++; continue; }
+    if (line.startsWith("## ")) { nodes.push(<h2 key={key++} className="text-base font-bold font-mono text-foreground mt-4 mb-1">{line.slice(3)}</h2>); i++; continue; }
+    if (line.startsWith("# ")) { nodes.push(<h1 key={key++} className="text-lg font-bold font-mono text-foreground mt-4 mb-2">{line.slice(2)}</h1>); i++; continue; }
 
-    // Horizontal rule
-    if (line.match(/^[-*]{3,}$/)) {
-      nodes.push(<hr key={key++} className="border-border my-3" />);
-      i++; continue;
-    }
+    if (line.match(/^[-*]{3,}$/)) { nodes.push(<hr key={key++} className="border-border my-3" />); i++; continue; }
+    if (!line.trim()) { nodes.push(<div key={key++} className="h-2" />); i++; continue; }
 
-    // Empty line
-    if (!line.trim()) {
-      nodes.push(<div key={key++} className="h-2" />);
-      i++; continue;
-    }
-
-    // Bullet list
     if (line.match(/^[\-\*] /)) {
       const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^[\-\*] /)) {
-        items.push(lines[i].slice(2));
-        i++;
-      }
-      nodes.push(
-        <ul key={key++} className="list-disc list-inside space-y-0.5 my-1">
-          {items.map((item, idx) => (
-            <li key={idx} className="text-sm text-foreground font-mono">{inlineFormat(item)}</li>
-          ))}
-        </ul>
-      );
+      while (i < lines.length && lines[i].match(/^[\-\*] /)) { items.push(lines[i].slice(2)); i++; }
+      nodes.push(<ul key={key++} className="list-disc list-inside space-y-0.5 my-1">{items.map((item, idx) => <li key={idx} className="text-sm text-foreground font-mono">{inlineFormat(item)}</li>)}</ul>);
       continue;
     }
 
-    // Numbered list
     if (line.match(/^\d+\. /)) {
       const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^\d+\. /)) {
-        items.push(lines[i].replace(/^\d+\. /, ""));
-        i++;
-      }
-      nodes.push(
-        <ol key={key++} className="list-decimal list-inside space-y-0.5 my-1">
-          {items.map((item, idx) => (
-            <li key={idx} className="text-sm text-foreground font-mono">{inlineFormat(item)}</li>
-          ))}
-        </ol>
-      );
+      while (i < lines.length && lines[i].match(/^\d+\. /)) { items.push(lines[i].replace(/^\d+\. /, "")); i++; }
+      nodes.push(<ol key={key++} className="list-decimal list-inside space-y-0.5 my-1">{items.map((item, idx) => <li key={idx} className="text-sm text-foreground font-mono">{inlineFormat(item)}</li>)}</ol>);
       continue;
     }
 
-    // Paragraph
     nodes.push(<p key={key++} className="text-sm font-mono text-foreground leading-relaxed">{inlineFormat(line)}</p>);
     i++;
   }
@@ -136,12 +120,9 @@ function renderMarkdown(text: string): React.ReactNode[] {
 function inlineFormat(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|_[^_]+_)/g);
   return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**"))
-      return <strong key={i} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
-    if (part.startsWith("`") && part.endsWith("`"))
-      return <code key={i} className="bg-muted px-1 py-0.5 rounded text-cyan-400 text-xs">{part.slice(1, -1)}</code>;
-    if (part.startsWith("_") && part.endsWith("_"))
-      return <em key={i} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+    if (part.startsWith("`") && part.endsWith("`")) return <code key={i} className="bg-muted px-1 py-0.5 rounded text-cyan-400 text-xs">{part.slice(1, -1)}</code>;
+    if (part.startsWith("_") && part.endsWith("_")) return <em key={i} className="italic text-muted-foreground">{part.slice(1, -1)}</em>;
     return <span key={i}>{part}</span>;
   });
 }
@@ -150,13 +131,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
   const [copied, setCopied] = useState(false);
   const isFile = lang.startsWith("// 📄 ");
   const displayLang = isFile ? lang.replace("// 📄 ", "📄 ") : (lang || "code");
-
-  function copy() {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
+  function copy() { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); }
   return (
     <div className="my-2 rounded-md border border-border overflow-hidden">
       <div className="flex items-center justify-between bg-muted/50 px-3 py-1.5 border-b border-border">
@@ -165,9 +140,7 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
           {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
         </button>
       </div>
-      <pre className="p-3 text-xs font-mono text-foreground overflow-x-auto bg-background/80 max-h-80">
-        <code>{code}</code>
-      </pre>
+      <pre className="p-3 text-xs font-mono text-foreground overflow-x-auto bg-background/80 max-h-80"><code>{code}</code></pre>
     </div>
   );
 }
@@ -178,30 +151,19 @@ function FileCard({ file }: { file: { path: string; content: string; language: s
   function copy() { navigator.clipboard.writeText(file.content); setCopied(true); setTimeout(() => setCopied(false), 1500); }
   return (
     <div className="mt-2 rounded-md border border-cyan-400/30 bg-cyan-400/5 overflow-hidden">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-cyan-400/10 transition-colors"
-      >
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-cyan-400/10 transition-colors">
         {open ? <ChevronDown className="w-3 h-3 text-cyan-400" /> : <ChevronRight className="w-3 h-3 text-cyan-400" />}
         <FileCode2 className="w-3 h-3 text-cyan-400" />
         <span className="text-xs font-mono text-cyan-400 flex-1">{file.path}</span>
         <Badge variant="outline" className="text-xs text-cyan-400 border-cyan-400/30">{file.language}</Badge>
-        <button
-          onClick={e => { e.stopPropagation(); copy(); }}
-          className="ml-1 text-muted-foreground hover:text-foreground"
-        >
+        <button onClick={e => { e.stopPropagation(); copy(); }} className="ml-1 text-muted-foreground hover:text-foreground">
           {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
         </button>
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div
-            initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }}
-            className="overflow-hidden"
-          >
-            <pre className="p-3 text-xs font-mono text-foreground overflow-x-auto bg-background/80 max-h-60 border-t border-cyan-400/20">
-              <code>{file.content}</code>
-            </pre>
+          <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="overflow-hidden">
+            <pre className="p-3 text-xs font-mono text-foreground overflow-x-auto bg-background/80 max-h-60 border-t border-cyan-400/20"><code>{file.content}</code></pre>
           </motion.div>
         )}
       </AnimatePresence>
@@ -212,22 +174,12 @@ function FileCard({ file }: { file: { path: string; content: string; language: s
 function MessageBubble({ msg }: { msg: ChatMsg }) {
   const isUser = msg.role === "user";
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
-    >
-      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-        isUser ? "bg-primary/20 text-primary" : "bg-cyan-400/20 text-cyan-400"
-      }`}>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
+      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${isUser ? "bg-primary/20 text-primary" : "bg-cyan-400/20 text-cyan-400"}`}>
         {isUser ? <User className="w-3.5 h-3.5" /> : <Bot className="w-3.5 h-3.5" />}
       </div>
       <div className={`flex-1 max-w-[85%] ${isUser ? "items-end" : "items-start"} flex flex-col`}>
-        <div className={`rounded-lg px-3 py-2 ${
-          isUser
-            ? "bg-primary/15 border border-primary/30 text-right"
-            : "bg-muted/50 border border-border"
-        }`}>
+        <div className={`rounded-lg px-3 py-2 ${isUser ? "bg-primary/15 border border-primary/30 text-right" : "bg-muted/50 border border-border"}`}>
           {isUser
             ? <p className="text-sm font-mono text-foreground whitespace-pre-wrap">{msg.content}</p>
             : <div className="space-y-1">{renderMarkdown(msg.content)}</div>
@@ -246,11 +198,46 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
   );
 }
 
+// ── Attached file chip ────────────────────────────────────────────────────────
+function AttachedFileChip({ file, onRemove }: { file: AttachedFile; onRemove: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="flex items-center gap-1.5 bg-muted/60 border border-border rounded-md px-2 py-1 text-xs font-mono max-w-[180px] group"
+    >
+      <FileIcon ext={file.ext} className="w-3 h-3 text-cyan-400 shrink-0" />
+      <span className="truncate text-foreground">{file.filename}</span>
+      <span className="text-muted-foreground shrink-0">{formatBytes(file.sizeBytes)}</span>
+      <button
+        onClick={onRemove}
+        className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors shrink-0"
+      >
+        <X className="w-3 h-3" />
+      </button>
+    </motion.div>
+  );
+}
+
+// ── Accepted file types ───────────────────────────────────────────────────────
+const ACCEPTED = [
+  ".pdf", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xls",
+  ".txt", ".md", ".markdown", ".rtf", ".csv", ".tsv",
+  ".json", ".jsonl", ".xml", ".yaml", ".yml", ".toml",
+  ".js", ".mjs", ".ts", ".tsx", ".jsx", ".py", ".rb",
+  ".go", ".rs", ".java", ".kt", ".swift", ".c", ".cpp",
+  ".h", ".cs", ".php", ".sh", ".html", ".css", ".scss", ".sql", ".log",
+].join(",");
+
 export default function Chat() {
   const qc = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [projectId, setProjectId] = useState<string>("");
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -305,21 +292,70 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConv?.messages]);
 
+  // ── File upload handler ───────────────────────────────────────────────────
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`${BASE}/api/upload`, { method: "POST", body: fd });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Yükleme başarısız" }));
+          alert(`${file.name}: ${err.error}`);
+          continue;
+        }
+        const data = await res.json();
+        setAttachedFiles(prev => [...prev, { id: crypto.randomUUID(), ...data }]);
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeFile(id: string) {
+    setAttachedFiles(prev => prev.filter(f => f.id !== id));
+  }
+
+  // ── Build message content with file context ───────────────────────────────
+  function buildMessageContent(userText: string): string {
+    if (!attachedFiles.length) return userText;
+
+    const fileBlocks = attachedFiles.map(f => {
+      const ext = f.ext.slice(1) || "text";
+      return `📎 **${f.filename}** (${formatBytes(f.sizeBytes)}, ${f.charCount.toLocaleString()} karakter)\n\`\`\`${ext}\n${f.text}\n\`\`\``;
+    });
+
+    return [
+      userText,
+      "",
+      "---",
+      "Yüklenen dosyalar:",
+      ...fileBlocks,
+    ].join("\n");
+  }
+
   async function handleSend() {
     const text = input.trim();
-    if (!text || sendMutation.isPending) return;
+    if ((!text && !attachedFiles.length) || sendMutation.isPending) return;
+    const content = buildMessageContent(text || "(Dosyayı analiz et)");
     setInput("");
+    setAttachedFiles([]);
 
     let convId = activeId;
     if (!convId) {
       const conv = await createMutation.mutateAsync({
-        title: text.slice(0, 60),
+        title: (text || attachedFiles[0]?.filename || "Dosya").slice(0, 60),
         projectId: projectId || undefined,
       });
       convId = conv.id;
     }
 
-    await sendMutation.mutateAsync({ id: convId!, content: text, pid: projectId });
+    await sendMutation.mutateAsync({ id: convId!, content, pid: projectId });
   }
 
   function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -336,6 +372,7 @@ export default function Chat() {
 
   const isSending = sendMutation.isPending || createMutation.isPending;
   const messages = activeConv?.messages ?? [];
+  const canSend = (!!input.trim() || attachedFiles.length > 0) && !isSending;
 
   return (
     <div className="flex h-full overflow-hidden">
@@ -348,7 +385,6 @@ export default function Chat() {
           </Button>
         </div>
 
-        {/* Project Filter */}
         <div className="px-2 py-2 border-b border-border/50">
           <select
             value={projectId}
@@ -378,9 +414,7 @@ export default function Chat() {
               }`}
             >
               <div className="flex items-start justify-between gap-1">
-                <p className={`text-xs font-mono truncate flex-1 ${
-                  activeId === conv.id ? "text-primary" : "text-foreground"
-                }`}>{conv.title}</p>
+                <p className={`text-xs font-mono truncate flex-1 ${activeId === conv.id ? "text-primary" : "text-foreground"}`}>{conv.title}</p>
                 <button
                   onClick={e => { e.stopPropagation(); deleteMutation.mutate(conv.id); }}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
@@ -394,9 +428,7 @@ export default function Chat() {
                   {projects.find((p: Project) => p.id === conv.projectId)?.name ?? conv.projectId}
                 </p>
               )}
-              {conv.model && (
-                <p className="text-xs text-cyan-400/60 font-mono mt-0.5 truncate">{conv.model}</p>
-              )}
+              {conv.model && <p className="text-xs text-cyan-400/60 font-mono mt-0.5 truncate">{conv.model}</p>}
             </button>
           ))}
         </div>
@@ -404,18 +436,13 @@ export default function Chat() {
 
       {/* ── Main Chat Area ────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
           {activeConv ? (
             <div className="flex items-center gap-2 min-w-0">
               <Bot className="w-4 h-4 text-cyan-400 shrink-0" />
               <span className="text-sm font-mono font-medium text-foreground truncate">{activeConv.title}</span>
-              {activeConv.model && (
-                <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-400/30 shrink-0">
-                  {activeConv.model}
-                </Badge>
-              )}
+              {activeConv.model && <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-400/30 shrink-0">{activeConv.model}</Badge>}
               {activeConv.projectId && (
                 <Badge variant="outline" className="text-xs font-mono shrink-0">
                   <Layers className="w-2.5 h-2.5 mr-1" />
@@ -450,7 +477,7 @@ export default function Chat() {
                 <h2 className="text-lg font-bold font-mono text-foreground mb-1">SWARM_CTRL AI</h2>
                 <p className="text-sm text-muted-foreground font-mono max-w-sm">
                   Kod yaz, dosya oluştur, proje geliştir.<br />
-                  Shift+Enter ile yeni satır, Enter ile gönder.
+                  PDF, Word, Excel, PPT ve daha fazlasını yükle.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 max-w-md">
@@ -469,9 +496,18 @@ export default function Chat() {
                   </button>
                 ))}
               </div>
-              <Button onClick={newConversation} variant="outline" size="sm">
-                <Plus className="w-3.5 h-3.5 mr-1.5" /> Yeni Sohbet Başlat
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={newConversation} variant="outline" size="sm">
+                  <Plus className="w-3.5 h-3.5 mr-1.5" /> Yeni Sohbet
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip className="w-3.5 h-3.5 mr-1.5" /> Dosya Yükle
+                </Button>
+              </div>
             </div>
           )}
 
@@ -481,16 +517,10 @@ export default function Chat() {
             </div>
           )}
 
-          {messages.map((msg, i) => (
-            <MessageBubble key={i} msg={msg} />
-          ))}
+          {messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
 
           {isSending && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-3"
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
               <div className="w-7 h-7 rounded-full bg-cyan-400/20 text-cyan-400 flex items-center justify-center shrink-0">
                 <Bot className="w-3.5 h-3.5" />
               </div>
@@ -507,33 +537,86 @@ export default function Chat() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
-        <div className="border-t border-border p-3 shrink-0">
+        {/* ── Input Area ──────────────────────────────────────── */}
+        <div className="border-t border-border p-3 shrink-0 space-y-2">
+          {/* Attached file chips */}
+          <AnimatePresence>
+            {attachedFiles.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-wrap gap-1.5 overflow-hidden"
+              >
+                {attachedFiles.map(f => (
+                  <AttachedFileChip key={f.id} file={f} onRemove={() => removeFile(f.id)} />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Textarea + buttons */}
           <div className="flex gap-2 items-end">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPTED}
+              multiple
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+
+            {/* Paperclip button */}
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className={`h-11 w-11 shrink-0 ${uploading ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || isSending}
+              title="Dosya ekle (PDF, Word, Excel, PPT, TXT, kod...)"
+            >
+              {uploading
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Paperclip className="w-4 h-4" />
+              }
+            </Button>
+
             <div className="flex-1 relative">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder={activeId ? "Mesaj yaz... (Enter: gönder, Shift+Enter: yeni satır)" : "Yeni sohbet başlatmak için yaz..."}
+                placeholder={
+                  attachedFiles.length > 0
+                    ? "Dosya hakkında soru sor... (Enter: gönder)"
+                    : activeId
+                      ? "Mesaj yaz... (Enter: gönder, Shift+Enter: yeni satır)"
+                      : "Yeni sohbet başlatmak için yaz..."
+                }
                 className="min-h-[44px] max-h-40 resize-none font-mono text-sm pr-3 bg-background border-border"
                 rows={1}
                 disabled={isSending}
               />
             </div>
+
             <Button
               size="icon"
               className="h-11 w-11 shrink-0"
               onClick={handleSend}
-              disabled={!input.trim() || isSending}
+              disabled={!canSend}
             >
               {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground font-mono mt-1.5 flex items-center gap-1">
-            <FileCode2 className="w-3 h-3" />
-            Dosya oluşturmak için: <code className="text-cyan-400 bg-muted px-1 rounded">```file:src/app.ts</code> formatını kullanabilirsin
+
+          <p className="text-xs text-muted-foreground font-mono flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1">
+              <Paperclip className="w-3 h-3" />
+              PDF · Word · Excel · PPT · TXT · CSV · JSON · Kod dosyaları
+            </span>
             {projectId && (
               <span className="ml-auto text-cyan-400/60 flex items-center gap-1">
                 <Layers className="w-2.5 h-2.5" />
