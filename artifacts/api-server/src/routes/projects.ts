@@ -165,6 +165,76 @@ router.get("/:projectId/files/:fileId", async (req, res) => {
   });
 });
 
+router.post("/import-github", async (req, res) => {
+  const { repoUrl } = req.body as { repoUrl?: string };
+  if (!repoUrl) return res.status(400).json({ error: "repoUrl is required" });
+
+  let imported;
+  try {
+    imported = await github.importRepoFiles(repoUrl);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "GitHub import başarısız oldu";
+    return res.status(400).json({ error: msg });
+  }
+
+  const { name, description, files } = imported;
+
+  const baseName = name.toLowerCase().replace(/[^a-z0-9-_]/g, "-");
+  let uniqueName = baseName;
+  let attempt = 0;
+  while (true) {
+    const existing = await db.select({ id: projectsTable.id }).from(projectsTable).where(eq(projectsTable.name, uniqueName));
+    if (!existing.length) break;
+    attempt++;
+    uniqueName = `${baseName}-${attempt}`;
+  }
+
+  const id = generateId("proj");
+  const now = new Date().toISOString();
+  const memory = { facts: [], summary: `Imported from GitHub: ${repoUrl}`, lastUpdated: now };
+  const [proj] = await db.insert(projectsTable).values({
+    id,
+    name: uniqueName,
+    description,
+    status: "active",
+    memory,
+    totalFiles: files.length,
+  }).returning();
+
+  if (files.length > 0) {
+    const importRunId = generateId("run");
+    const fileRows = files.map((f, i) => ({
+      id: generateId("pf"),
+      projectId: proj.id,
+      runId: importRunId,
+      agentKey: "github-import",
+      path: f.path,
+      content: f.content,
+      language: f.language,
+      operation: "create",
+      version: 1,
+      sizeBytes: f.sizeBytes,
+    }));
+
+    const BATCH = 20;
+    for (let i = 0; i < fileRows.length; i += BATCH) {
+      await db.insert(projectFilesTable).values(fileRows.slice(i, i + BATCH));
+    }
+  }
+
+  const actId = generateId("act");
+  await db.insert(activityTable).values({
+    id: actId,
+    type: "project_created",
+    message: `Project "${uniqueName}" imported from GitHub (${files.length} files)`,
+    entityId: proj.id,
+    entityType: "project",
+  });
+
+  broadcast("project_created", projectToJson(proj));
+  res.status(201).json({ ...projectToJson(proj), filesImported: files.length });
+});
+
 router.get("/:projectId/github", async (req, res) => {
   const { projectId } = req.params as { projectId: string };
   const [proj] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
