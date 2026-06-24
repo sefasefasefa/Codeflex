@@ -42,34 +42,95 @@ type ResolvedCfg =
   | { type: "groq";       model: string; apiKey: string }
   | { type: "gemini";     model: string; apiKey: string }
   | { type: "mistral";    model: string; apiKey: string }
+  | { type: "deepseek";   model: string; apiKey: string }
+  | { type: "codestral";  model: string; apiKey: string }
+  | { type: "cerebras";   model: string; apiKey: string }
+  | { type: "kimi";       model: string; apiKey: string }
+  | { type: "fireworks";  model: string; apiKey: string }
+  | { type: "zai";        model: string; apiKey: string }
+  | { type: "nvidia";     model: string; apiKey: string }
+  | { type: "lmstudio";   model: string; url: string }
+  | { type: "llamacpp";   model: string; url: string }
   | { type: "mock";       model: string };
+
+// Env var → provider type mapping
+const ENV_PROVIDER_MAP: Record<string, string> = {
+  MISTRAL_API_KEY: "mistral", GROQ_API_KEY: "groq", OPENROUTER_API_KEY: "openrouter",
+  OPENAI_API_KEY: "openai", ANTHROPIC_API_KEY: "anthropic", GEMINI_API_KEY: "gemini",
+  DEEPSEEK_API_KEY: "deepseek", CODESTRAL_API_KEY: "codestral", CEREBRAS_API_KEY: "cerebras",
+  KIMI_API_KEY: "kimi", FIREWORKS_API_KEY: "fireworks", ZAI_API_KEY: "zai",
+  NVIDIA_NIM_API_KEY: "nvidia",
+};
+const PROVIDER_BASE_URLS: Record<string, string> = {
+  mistral: "https://api.mistral.ai/v1", groq: "https://api.groq.com/openai/v1",
+  openrouter: "https://openrouter.ai/api/v1", openai: "https://api.openai.com/v1",
+  anthropic: "https://api.anthropic.com", gemini: "https://generativelanguage.googleapis.com",
+  deepseek: "https://api.deepseek.com/v1", codestral: "https://codestral.mistral.ai/v1",
+  cerebras: "https://api.cerebras.ai/v1", kimi: "https://api.moonshot.cn/v1",
+  fireworks: "https://api.fireworks.ai/inference/v1", zai: "https://api.z.ai/v1",
+  nvidia: "https://integrate.api.nvidia.com/v1",
+};
 
 async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
   const [cfg] = await db.select().from(modelConfigsTable)
     .where(eq(modelConfigsTable.isDefault, true)).limit(1);
-  if (!cfg) return { type: "ollama", model: "qwen2.5-coder:7b", ollamaUrl: "http://localhost:11434" };
 
-  let model = cfg.globalModel;
-  if (agentKey && cfg.mode === "per_agent") {
-    const overrides = cfg.agentOverrides as Record<string, string>;
+  let model = cfg?.globalModel ?? "mistral-large-latest";
+  if (agentKey && cfg?.mode === "per_agent") {
+    const overrides = (cfg.agentOverrides ?? {}) as Record<string, string>;
     if (overrides[agentKey]) model = overrides[agentKey];
   }
 
-  const sources = (cfg.sources as any[]);
+  const sources = ((cfg?.sources ?? []) as any[]);
   const find = (type: string) => sources.find((s: any) => s.type === type && s.apiKey) || sources.find((s: any) => s.type === type);
   const defaultSrc = sources.find((s: any) => s.isDefault);
 
-  // Default kaynak varsa onu kullan
-  if (defaultSrc) {
-    if (defaultSrc.type === "groq"       && defaultSrc.apiKey) return { type: "groq",       model, apiKey: defaultSrc.apiKey };
-    if (defaultSrc.type === "openrouter" && defaultSrc.apiKey) return { type: "openrouter", model, apiKey: defaultSrc.apiKey };
-    if (defaultSrc.type === "openai"     && defaultSrc.apiKey) return { type: "openai",     model, apiKey: defaultSrc.apiKey, url: defaultSrc.url || "https://api.openai.com" };
-    if (defaultSrc.type === "anthropic"  && defaultSrc.apiKey) return { type: "anthropic",  model, apiKey: defaultSrc.apiKey };
-    if (defaultSrc.type === "gemini"     && defaultSrc.apiKey) return { type: "gemini",     model, apiKey: defaultSrc.apiKey };
-    if (defaultSrc.type === "ollama") return { type: "ollama", model, ollamaUrl: defaultSrc.url };
+  // Helper: resolve key from DB source or env var
+  function resolveKey(type: string): string | undefined {
+    const dbSrc = find(type);
+    if (dbSrc?.apiKey) return dbSrc.apiKey;
+    const envEntry = Object.entries(ENV_PROVIDER_MAP).find(([, v]) => v === type);
+    return envEntry ? process.env[envEntry[0]] : undefined;
   }
 
-  // Fallback sırası: mistral > groq > openrouter > openai > anthropic > gemini > ollama > mock
+  // OpenAI-compat providers (all use callOpenAICompat)
+  const COMPAT_PROVIDERS = ["mistral","groq","openrouter","openai","deepseek","codestral","cerebras","kimi","fireworks","zai","nvidia"] as const;
+  type CompatType = typeof COMPAT_PROVIDERS[number];
+
+  // 1. Try default DB source
+  if (defaultSrc) {
+    const key = defaultSrc.apiKey || resolveKey(defaultSrc.type);
+    if (defaultSrc.type === "anthropic" && key) return { type: "anthropic", model, apiKey: key };
+    if (defaultSrc.type === "gemini"    && key) return { type: "gemini",    model, apiKey: key };
+    if (defaultSrc.type === "ollama")           return { type: "ollama",    model, ollamaUrl: defaultSrc.url || "http://localhost:11434" };
+    if (defaultSrc.type === "lmstudio")         return { type: "lmstudio",  model, url: defaultSrc.url || "http://localhost:1234/v1" };
+    if (defaultSrc.type === "llamacpp")         return { type: "llamacpp",  model, url: defaultSrc.url || "http://localhost:8080/v1" };
+    if (COMPAT_PROVIDERS.includes(defaultSrc.type as CompatType) && key) {
+      return { type: defaultSrc.type as CompatType, model, apiKey: key };
+    }
+  }
+
+  // 2. Fallback: check all providers in priority order (env vars + DB)
+  const priority: string[] = ["mistral","groq","openrouter","deepseek","gemini","openai","anthropic","cerebras","kimi","codestral","fireworks","zai","nvidia","ollama","lmstudio","llamacpp"];
+  for (const ptype of priority) {
+    const key = resolveKey(ptype);
+    if (ptype === "anthropic" && key) return { type: "anthropic", model, apiKey: key };
+    if (ptype === "gemini"    && key) return { type: "gemini",    model, apiKey: key };
+    if (ptype === "ollama")           { const src = find("ollama"); if (src) return { type: "ollama", model, ollamaUrl: src.url || "http://localhost:11434" }; }
+    if (COMPAT_PROVIDERS.includes(ptype as CompatType) && key) {
+      return { type: ptype as CompatType, model, apiKey: key };
+    }
+  }
+
+  // 3. Env var scan (for keys not in DB at all)
+  for (const [envVar, ptype] of Object.entries(ENV_PROVIDER_MAP)) {
+    const key = process.env[envVar];
+    if (!key) continue;
+    if (ptype === "anthropic") return { type: "anthropic", model, apiKey: key };
+    if (ptype === "gemini")    return { type: "gemini",    model, apiKey: key };
+    if (COMPAT_PROVIDERS.includes(ptype as CompatType)) return { type: ptype as CompatType, model, apiKey: key };
+  }
+
   const mistral    = find("mistral");
   const groq       = find("groq");
   const openrouter = find("openrouter");
@@ -81,10 +142,10 @@ async function getConfig(agentKey?: string): Promise<ResolvedCfg> {
   if (mistral?.apiKey)    return { type: "mistral",    model, apiKey: mistral.apiKey };
   if (groq?.apiKey)       return { type: "groq",       model, apiKey: groq.apiKey };
   if (openrouter?.apiKey) return { type: "openrouter", model, apiKey: openrouter.apiKey };
-  if (openai?.apiKey)     return { type: "openai",     model, apiKey: openai.apiKey, url: openai.url || "https://api.openai.com" };
+  if (openai?.apiKey)     return { type: "openai",     model, apiKey: openai.apiKey, url: openai?.url || "https://api.openai.com" };
   if (anthropic?.apiKey)  return { type: "anthropic",  model, apiKey: anthropic.apiKey };
   if (gemini?.apiKey)     return { type: "gemini",     model, apiKey: gemini.apiKey };
-  if (ollama)             return { type: "ollama",     model, ollamaUrl: ollama.url };
+  if (ollama)             return { type: "ollama",     model, ollamaUrl: ollama?.url || "http://localhost:11434" };
   return { type: "mock", model };
 }
 
@@ -241,38 +302,52 @@ export async function chat(
     switch (cfg.type) {
       case "ollama":
         rawContent = await callOllama(cfg.ollamaUrl, cfg.model, fullMessages);
-        source = "ollama";
-        break;
+        source = "ollama"; break;
       case "openai":
         rawContent = await callOpenAICompat(cfg.apiKey, cfg.url, cfg.model, fullMessages);
-        source = "openai";
-        break;
+        source = "openai"; break;
       case "openrouter":
-        rawContent = await callOpenAICompat(
-          cfg.apiKey,
-          "https://openrouter.ai/api/v1",
-          cfg.model,
-          fullMessages,
-          { "HTTP-Referer": "https://swarm-ctrl.app", "X-Title": "SWARM_CTRL" }
-        );
-        source = "openrouter";
-        break;
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://openrouter.ai/api/v1", cfg.model, fullMessages, { "HTTP-Referer": "https://swarm-ctrl.app", "X-Title": "SWARM_CTRL" });
+        source = "openrouter"; break;
       case "groq":
         rawContent = await callOpenAICompat(cfg.apiKey, "https://api.groq.com/openai/v1", cfg.model, fullMessages);
-        source = "groq";
-        break;
+        source = "groq"; break;
       case "mistral":
         rawContent = await callOpenAICompat(cfg.apiKey, "https://api.mistral.ai/v1", cfg.model, fullMessages);
-        source = "mistral";
-        break;
+        source = "mistral"; break;
+      case "deepseek":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.deepseek.com/v1", cfg.model, fullMessages);
+        source = "openai"; break;
+      case "codestral":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://codestral.mistral.ai/v1", cfg.model, fullMessages);
+        source = "mistral"; break;
+      case "cerebras":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.cerebras.ai/v1", cfg.model, fullMessages);
+        source = "groq"; break;
+      case "kimi":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.moonshot.cn/v1", cfg.model, fullMessages);
+        source = "openai"; break;
+      case "fireworks":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.fireworks.ai/inference/v1", cfg.model, fullMessages);
+        source = "openai"; break;
+      case "zai":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://api.z.ai/v1", cfg.model, fullMessages);
+        source = "openai"; break;
+      case "nvidia":
+        rawContent = await callOpenAICompat(cfg.apiKey, "https://integrate.api.nvidia.com/v1", cfg.model, fullMessages);
+        source = "openai"; break;
+      case "lmstudio":
+        rawContent = await callOpenAICompat("lm-studio", cfg.url, cfg.model, fullMessages);
+        source = "ollama"; break;
+      case "llamacpp":
+        rawContent = await callOpenAICompat("no-key", cfg.url, cfg.model, fullMessages);
+        source = "ollama"; break;
       case "anthropic":
         rawContent = await callAnthropic(cfg.apiKey, cfg.model, fullMessages);
-        source = "anthropic";
-        break;
+        source = "anthropic"; break;
       case "gemini":
         rawContent = await callGemini(cfg.apiKey, cfg.model, fullMessages);
-        source = "gemini";
-        break;
+        source = "gemini"; break;
       default:
         rawContent = mockResponse(userMessages[userMessages.length - 1]?.content ?? "");
         source = "mock";
@@ -335,6 +410,33 @@ export async function agentChat(
       case "mistral":
         rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.mistral.ai/v1", resolvedCfg.model, fullMessages);
         source = "mistral"; break;
+      case "deepseek":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.deepseek.com/v1", resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "codestral":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://codestral.mistral.ai/v1", resolvedCfg.model, fullMessages);
+        source = "mistral"; break;
+      case "cerebras":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.cerebras.ai/v1", resolvedCfg.model, fullMessages);
+        source = "groq"; break;
+      case "kimi":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.moonshot.cn/v1", resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "fireworks":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.fireworks.ai/inference/v1", resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "zai":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://api.z.ai/v1", resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "nvidia":
+        rawContent = await callOpenAICompat(resolvedCfg.apiKey, "https://integrate.api.nvidia.com/v1", resolvedCfg.model, fullMessages);
+        source = "openai"; break;
+      case "lmstudio":
+        rawContent = await callOpenAICompat("lm-studio", resolvedCfg.url, resolvedCfg.model, fullMessages);
+        source = "ollama"; break;
+      case "llamacpp":
+        rawContent = await callOpenAICompat("no-key", resolvedCfg.url, resolvedCfg.model, fullMessages);
+        source = "ollama"; break;
       case "anthropic":
         rawContent = await callAnthropic(resolvedCfg.apiKey, resolvedCfg.model, fullMessages);
         source = "anthropic"; break;
