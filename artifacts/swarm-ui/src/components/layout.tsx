@@ -8,9 +8,11 @@ import { useSidebar } from "@/components/ui/sidebar";
 import {
   Activity, PlayCircle,
   Layers, Terminal, SquareTerminal, MessageSquare, BotMessageSquare,
-  Menu, MoreHorizontal, ShieldCheck,
+  Menu, MoreHorizontal, ShieldCheck, LogOut, FlaskConical, ExternalLink,
 } from "lucide-react";
 import { useGetStats, useListRuns, getGetStatsQueryKey, getListRunsQueryKey } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { useSwarmSync } from "@/hooks/use-swarm-sync";
 import { cn } from "@/lib/utils";
 
 function MobileMoreButton() {
@@ -26,11 +28,46 @@ function MobileMoreButton() {
   );
 }
 
+function UserRow() {
+  const { user, logout } = useAuth();
+  if (!user) return null;
+
+  return (
+    <div className="p-3 border-t border-border/50 flex items-center gap-2.5">
+      {user.profileImageUrl ? (
+        <img
+          src={user.profileImageUrl}
+          alt="Profil"
+          className="w-7 h-7 rounded-full border border-border object-cover shrink-0"
+        />
+      ) : (
+        <div className="w-7 h-7 rounded-full bg-primary/20 border border-border flex items-center justify-center shrink-0">
+          <span className="text-[11px] font-mono font-bold text-primary">
+            {user.firstName?.[0]?.toUpperCase() ?? "U"}
+          </span>
+        </div>
+      )}
+      <span className="text-xs font-mono text-muted-foreground truncate flex-1">
+        {user.firstName ?? user.id}
+      </span>
+      <button
+        onClick={logout}
+        title="Çıkış Yap"
+        className="p-1 rounded text-muted-foreground/40 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+      >
+        <LogOut className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { data: stats } = useGetStats({ query: { queryKey: getGetStatsQueryKey(), refetchInterval: 5000 } });
   const { data: runs = [] } = useListRuns({ status: "running" }, { query: { queryKey: getListRunsQueryKey({ status: "running" }), refetchInterval: 3000 } });
   const activeRuns = runs.length;
+
+  useSwarmSync();
 
   const mainNav = [
     { label: "Dashboard", href: "/", icon: Activity },
@@ -74,6 +111,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <NavGroup label="PIPELINE" items={pipelineNav} isActive={isActive} />
             <NavGroup label="SYSTEM" items={systemNav} isActive={isActive} />
 
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-xs font-mono tracking-widest opacity-50">APPS</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <a href="/studio/" className="flex items-center gap-3">
+                        <FlaskConical className="w-4 h-4" />
+                        <span className="font-medium flex-1">AI Studio</span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <a href="/cli/" className="flex items-center gap-3">
+                        <SquareTerminal className="w-4 h-4" />
+                        <span className="font-medium flex-1">CLI Web</span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground/40" />
+                      </a>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
             {stats && (
               <div className="mt-auto p-3 border-t border-border/50 space-y-1">
                 <div className="text-xs font-mono text-muted-foreground flex justify-between">
@@ -86,11 +149,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
             )}
+
+            <UserRow />
           </SidebarContent>
         </Sidebar>
 
         <SidebarInset className="flex-1 bg-background flex flex-col min-w-0 overflow-x-hidden">
-          {/* Mobile top bar — hidden on desktop */}
           <header className="md:hidden flex items-center gap-3 h-14 px-4 border-b border-border bg-background sticky top-0 z-20 shrink-0">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground">
               <Menu className="w-5 h-5" />
@@ -103,14 +167,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </span>
           </header>
 
-          {/* Scrollable content — leaves room for mobile bottom nav */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden pb-[env(safe-area-inset-bottom)] md:pb-0">
             <div className="md:pb-0 pb-16">
               {children}
             </div>
           </div>
 
-          {/* Mobile bottom navigation — hidden on desktop */}
           <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-background border-t border-border flex items-stretch"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
@@ -139,8 +201,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-[10px] font-mono font-medium leading-none">{item.label}</span>
               </Link>
             ))}
-
-            {/* "More" button opens the sidebar drawer */}
             <MobileMoreButton />
           </nav>
         </SidebarInset>

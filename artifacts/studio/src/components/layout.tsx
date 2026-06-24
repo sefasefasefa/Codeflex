@@ -1,11 +1,16 @@
 import { Link, useLocation } from "wouter";
-import { MessageSquare, Globe, Monitor, Plus, Settings, LogOut } from "lucide-react";
+import { MessageSquare, Globe, Monitor, Plus, Settings, LogOut, LayoutDashboard, SquareTerminal, ExternalLink } from "lucide-react";
 import { useAuth } from "@workspace/replit-auth-web";
 
 const NAV_ITEMS = [
   { href: "/chat",     icon: MessageSquare, label: "Sohbet" },
   { href: "/projects", icon: Monitor,       label: "Projeler" },
   { href: "/settings", icon: Settings,      label: "Ayarlar" },
+];
+
+const CROSS_APP_ITEMS = [
+  { href: "/",      icon: LayoutDashboard, label: "Swarm UI" },
+  { href: "/cli/",  icon: SquareTerminal,  label: "CLI Web" },
 ];
 
 function SwarmIcon({ className }: { className?: string }) {
@@ -64,6 +69,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+
+          <div className="pt-3 mt-2 border-t border-white/5">
+            <p className="px-3 pb-1.5 text-[10px] font-mono tracking-widest text-white/20 uppercase">Apps</p>
+            {CROSS_APP_ITEMS.map((item) => (
+              <a key={item.href} href={item.href}>
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all text-sm text-white/30 hover:text-white hover:bg-white/5">
+                  <item.icon className="w-4 h-4 shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  <ExternalLink className="w-3 h-3 opacity-40" />
+                </div>
+              </a>
+            ))}
+          </div>
         </nav>
 
         <div className="border-t border-white/5 p-3 flex items-center gap-2.5">
@@ -88,16 +106,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-[72px] bg-[#111318]/95 backdrop-blur-xl border-t border-white/5">
-        {/* Avatar */}
         <Link href="/settings">
           <button className="flex items-center justify-center">
             <UserAvatar size="md" />
           </button>
         </Link>
 
-        {/* Center icon group */}
         <div className="flex items-center gap-1 bg-[#1c1f27] rounded-2xl px-2 py-1.5">
-          {/* Monitor / Projects */}
           <Link href="/projects">
             <button className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all ${
               isActive("/projects") ? "bg-indigo-600/20 text-indigo-400" : "text-white/40 hover:text-white hover:bg-white/5"
@@ -106,7 +121,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
           </Link>
 
-          {/* Swarm / Chat — primary active */}
           <Link href="/chat">
             <button className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all ${
               isActive("/chat") ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30" : "text-white/40 hover:text-white hover:bg-white/5"
@@ -115,7 +129,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </button>
           </Link>
 
-          {/* Globe / Web */}
           <Link href="/files">
             <button className={`flex items-center justify-center w-11 h-11 rounded-xl transition-all ${
               isActive("/files") ? "bg-indigo-600/20 text-indigo-400" : "text-white/40 hover:text-white hover:bg-white/5"
@@ -125,11 +138,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
 
-        {/* Plus — new chat */}
         <Link href="/chat">
-          <button
-            className="flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all"
-          >
+          <button className="flex items-center justify-center w-10 h-10 rounded-xl border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all">
             <Plus className="w-5 h-5" />
           </button>
         </Link>

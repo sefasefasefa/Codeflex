@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAuth } from "@workspace/replit-auth-web";
+import { useSwarmSync } from "@/hooks/use-swarm-sync";
 
 const queryClient = new QueryClient();
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const API = "/api";
 
 type LineKind = "input" | "output" | "error" | "info" | "success";
@@ -44,7 +45,7 @@ function makeLine(kind: LineKind, text: string): Line {
 }
 
 async function apiFetch(path: string) {
-  const res = await fetch(`${API}${path}`);
+  const res = await fetch(`${API}${path}`, { credentials: "include" });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   return res.json();
 }
@@ -53,6 +54,7 @@ async function apiPost(path: string, body: unknown) {
   const res = await fetch(`${API}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -66,7 +68,23 @@ function formatJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2);
 }
 
+function AppNav() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-1.5 bg-[#080808] border-b border-green-900/20 text-[11px] font-mono text-green-800">
+      <span className="text-green-600/60">apps:</span>
+      <a href="/" className="hover:text-green-400 transition-colors">swarm-ui</a>
+      <span className="text-green-900">·</span>
+      <a href="/studio/" className="hover:text-green-400 transition-colors">studio</a>
+      <span className="text-green-900">·</span>
+      <span className="text-green-600">cli</span>
+    </div>
+  );
+}
+
 function Terminal() {
+  const { user, isAuthenticated, isLoading, login } = useAuth();
+  useSwarmSync();
+
   const [lines, setLines] = useState<Line[]>([
     makeLine("info", `Swarm Agent CLI — ${new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}`),
     makeLine("info", `API: ${window.location.origin}${API}`),
@@ -94,6 +112,12 @@ function Terminal() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      addLines(makeLine("success", `✓ Oturum: ${user.firstName ?? user.id}`));
+    }
+  }, [isLoading, isAuthenticated, user, addLines]);
 
   const runCommand = useCallback(async (raw: string) => {
     const cmd = raw.trim();
@@ -231,12 +255,41 @@ function Terminal() {
     success: "text-green-400",
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen bg-[#111] font-mono text-sm items-center justify-center">
+        <span className="text-green-600 animate-pulse">bağlanıyor...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col h-screen bg-[#111] font-mono text-sm">
+        <AppNav />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <p className="text-green-600 text-sm">CLI'yi kullanmak için giriş yapın.</p>
+            <button
+              onClick={login}
+              className="px-6 py-2 border border-green-700 text-green-400 hover:bg-green-900/20 transition-colors rounded font-mono text-sm"
+            >
+              Giriş Yap
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex flex-col h-screen bg-[#111] font-mono text-sm select-text"
       onClick={() => inputRef.current?.focus()}
     >
       <div className="terminal-scanline" />
+
+      <AppNav />
 
       <div className="flex items-center gap-2 px-4 py-2 bg-[#0d0d0d] border-b border-green-900/40">
         <div className="flex gap-1.5">
@@ -247,7 +300,10 @@ function Terminal() {
         <span className="text-green-600 text-xs ml-2 tracking-widest uppercase">
           swarm-agent — cli
         </span>
-        <div className="ml-auto flex items-center gap-2 text-green-800 text-xs">
+        <div className="ml-auto flex items-center gap-3 text-green-800 text-xs">
+          {user && (
+            <span className="text-green-700">{user.firstName ?? user.id}</span>
+          )}
           {busy && <span className="text-yellow-600 animate-pulse">● çalışıyor</span>}
           <span>{new Date().toLocaleTimeString("tr-TR")}</span>
         </div>
