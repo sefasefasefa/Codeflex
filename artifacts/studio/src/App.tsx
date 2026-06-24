@@ -2,28 +2,31 @@ import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wo
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ClerkProvider, SignIn, SignUp, useUser, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 import Layout from "@/components/layout";
 import Landing from "@/pages/landing";
 import NotFound from "@/pages/not-found";
-
-import Chat from "@/pages/chat";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
-import Files from "@/pages/files";
 import Settings from "@/pages/settings";
 
 const queryClient = new QueryClient();
 
 const basePath = import.meta.env.BASE_URL.replace(/\/+$/, "");
 
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
-);
+const clerkPubKey = (() => {
+  try {
+    return publishableKeyFromHost(
+      window.location.hostname,
+      import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    );
+  } catch {
+    return null;
+  }
+})();
 
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
@@ -71,7 +74,6 @@ const clerkAppearance = {
     dividerLine: "bg-white/10",
     alert: "bg-white/5 border-white/10",
     otpCodeFieldInput: "bg-[#161b27] border-white/10 text-white",
-    formFieldRow: "",
     main: "bg-[#0d1117]",
   },
 };
@@ -85,28 +87,6 @@ function LoadingScreen() {
       </div>
     </div>
   );
-}
-
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isLoaded, isSignedIn } = useUser();
-
-  if (!isLoaded) return <LoadingScreen />;
-  if (!isSignedIn) return <Landing />;
-
-  return (
-    <Layout>
-      <Component />
-    </Layout>
-  );
-}
-
-function RootRoute() {
-  const { isLoaded, isSignedIn } = useUser();
-
-  if (!isLoaded) return <LoadingScreen />;
-  if (!isSignedIn) return <Landing />;
-
-  return <Redirect to="/chat" />;
 }
 
 function SignInPage() {
@@ -125,41 +105,81 @@ function SignUpPage() {
   );
 }
 
+function ProtectedSettings() {
+  const { isLoaded, isSignedIn } = useUser();
+  if (!isLoaded) return <LoadingScreen />;
+  if (!isSignedIn) return <Landing />;
+  return (
+    <Layout>
+      <Settings />
+    </Layout>
+  );
+}
+
 function Router() {
+  const { isLoaded, isSignedIn } = useUser();
+
+  if (!isLoaded) return <LoadingScreen />;
+
   return (
     <Switch>
-      <Route path="/" component={RootRoute} />
+      <Route path="/">
+        {isSignedIn ? <Redirect to="/projects" /> : <Landing />}
+      </Route>
+
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+
+      {/* Projects home — full screen, no sidebar */}
+      <Route path="/projects">
+        {isSignedIn ? <Projects /> : <Landing />}
+      </Route>
+
+      {/* Project workspace — full screen 3-column */}
+      <Route path="/projects/:id">
+        {isSignedIn ? <ProjectDetail /> : <Landing />}
+      </Route>
+
+      {/* Settings — uses sidebar layout */}
+      <Route path="/settings" component={ProtectedSettings} />
+
+      {/* Legacy redirects */}
       <Route path="/chat">
-        <ProtectedRoute component={Chat} />
+        {isSignedIn ? <Redirect to="/projects" /> : <Landing />}
       </Route>
       <Route path="/chat/:id">
-        <ProtectedRoute component={Chat} />
-      </Route>
-      <Route path="/projects">
-        <ProtectedRoute component={Projects} />
-      </Route>
-      <Route path="/projects/:id">
-        <ProtectedRoute component={ProjectDetail} />
+        {isSignedIn ? <Redirect to="/projects" /> : <Landing />}
       </Route>
       <Route path="/files">
-        <ProtectedRoute component={Files} />
+        {isSignedIn ? <Redirect to="/projects" /> : <Landing />}
       </Route>
-      <Route path="/settings">
-        <ProtectedRoute component={Settings} />
-      </Route>
+
       <Route component={NotFound} />
     </Switch>
+  );
+}
+
+function NoAuthApp() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Landing />
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
+  if (!clerkPubKey) {
+    return <NoAuthApp />;
+  }
+
   return (
     <ClerkProvider
-      publishableKey={clerkPubKey!}
+      publishableKey={clerkPubKey}
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
