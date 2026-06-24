@@ -44,6 +44,7 @@ router.get("/login", async (req: Request, res: Response) => {
     const state = oidc.randomState();
 
     const authUrl = new URL(config.serverMetadata().authorization_endpoint!);
+    authUrl.searchParams.set("client_id", process.env.REPL_ID!);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "code");
     authUrl.searchParams.set("scope", "openid profile email");
