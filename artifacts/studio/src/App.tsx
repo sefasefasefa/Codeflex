@@ -11,6 +11,7 @@ import NotFound from "@/pages/not-found";
 import Projects from "@/pages/projects";
 import ProjectDetail from "@/pages/project-detail";
 import Settings from "@/pages/settings";
+import Chat from "@/pages/chat";
 
 const queryClient = new QueryClient();
 
@@ -130,18 +131,25 @@ function AppContent() {
     <>
       <Switch>
         <Route path="/">
-          <Redirect to="/projects" />
+          <Redirect to="/chat" />
         </Route>
 
         <Route path="/sign-in/*?">
-          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
+          {isSignedIn ? <Redirect to="/chat" /> : <Chat />}
         </Route>
         <Route path="/sign-up/*?">
-          {isSignedIn ? <Redirect to="/projects" /> : <Projects />}
+          {isSignedIn ? <Redirect to="/chat" /> : <Chat />}
+        </Route>
+
+        <Route path="/chat">
+          <Layout><Chat /></Layout>
+        </Route>
+        <Route path="/chat/:id">
+          {({ id }: { id: string }) => <Layout><Chat key={id} /></Layout>}
         </Route>
 
         <Route path="/projects">
-          <Projects />
+          <Layout><Projects /></Layout>
         </Route>
 
         <Route path="/projects/:id">
@@ -149,21 +157,11 @@ function AppContent() {
         </Route>
 
         <Route path="/settings">
-          {isSignedIn ? (
-            <Layout><Settings /></Layout>
-          ) : (
-            <Projects />
-          )}
+          <Layout><Settings /></Layout>
         </Route>
 
-        <Route path="/chat">
-          <Redirect to="/projects" />
-        </Route>
-        <Route path="/chat/:id">
-          <Redirect to="/projects" />
-        </Route>
         <Route path="/files">
-          <Redirect to="/projects" />
+          <Layout><Settings /></Layout>
         </Route>
 
         <Route component={NotFound} />
